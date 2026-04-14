@@ -22,4 +22,6 @@ class AppAssets {
       'assets/game/effects/explosion/merge_burst_sheet_01.png';
   static const String linkNumberPathGlowPng =
       'assets/game/effects/path_glow.png';
+  static const String linkNumberSkillBreakAxePng =
+      'assets/game/skills/link_number_skill_break_axe.png';
 }

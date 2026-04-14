@@ -42,19 +42,11 @@ class LinkNumberGoalPanel extends StatelessWidget {
         child: ListView(
           padding: EdgeInsets.zero,
           children: <Widget>[
-            _PanelTitle(
+            _GoalHeaderCard(
               title: '${LocaleKey.linkNumberLevel.tr} ${snapshot.currentLevel}',
-            ),
-            6.height,
-            Text(
-              snapshot.isGoalCountMode
+              modeLabel: snapshot.isGoalCountMode
                   ? LocaleKey.linkNumberModeGoalCount.tr
                   : LocaleKey.linkNumberModeGoalScore.tr,
-              textAlign: TextAlign.center,
-              style: AppStyles.bodySmall(
-                color: AppColors.white.withValues(alpha: 0.85),
-                fontWeight: FontWeight.w600,
-              ),
             ),
             sectionSpacing.height,
             _PanelTitle(title: LocaleKey.linkNumberCurrent.tr),
@@ -117,7 +109,76 @@ class _PanelTitle extends StatelessWidget {
     return Text(
       title,
       textAlign: TextAlign.center,
-      style: AppStyles.h4(color: AppColors.white, fontWeight: FontWeight.w700),
+      style: AppStyles.bodyLarge(
+        color: AppColors.white.withValues(alpha: 0.95),
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+}
+
+class _GoalHeaderCard extends StatelessWidget {
+  const _GoalHeaderCard({required this.title, required this.modeLabel});
+
+  final String title;
+  final String modeLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[
+            AppColors.color0095FF.withValues(alpha: 0.26),
+            AppColors.color131A29.withValues(alpha: 0.9),
+          ],
+        ),
+        borderRadius: 12.borderRadiusAll,
+        border: Border.all(
+          color: AppColors.colorF586AA6.withValues(alpha: 0.6),
+        ),
+      ),
+      child: Padding(
+        padding: 10.paddingAll,
+        child: Column(
+          children: <Widget>[
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: AppStyles.h3(
+                color: AppColors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            8.height,
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: AppColors.black.withValues(alpha: 0.24),
+                borderRadius: 20.borderRadiusAll,
+                border: Border.all(
+                  color: AppColors.white.withValues(alpha: 0.22),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                child: Text(
+                  modeLabel,
+                  textAlign: TextAlign.center,
+                  style: AppStyles.bodySmall(
+                    color: AppColors.white.withValues(alpha: 0.92),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -131,10 +192,10 @@ class _InfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.color131A29.withValues(alpha: 0.76),
+        color: AppColors.color131A29.withValues(alpha: 0.84),
         borderRadius: 12.borderRadiusAll,
         border: Border.all(
-          color: AppColors.colorF586AA6.withValues(alpha: 0.48),
+          color: AppColors.colorF586AA6.withValues(alpha: 0.56),
         ),
       ),
       child: Padding(

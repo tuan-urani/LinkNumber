@@ -41,14 +41,8 @@ class LinkNumberHudPanel extends StatelessWidget {
         child: ListView(
           padding: EdgeInsets.zero,
           children: <Widget>[
-            _TopStatCard(
-              icon: Icons.star_rounded,
-              value: '${snapshot.stars}',
-              iconColor: AppColors.colorFFE53E,
-              compact: compact,
-            ),
-            spacing.height,
-            _CoinCard(
+            _ResourceHeaderCard(
+              stars: snapshot.stars,
               coins: snapshot.coins,
               onClaimReward: onClaimReward,
               compact: compact,
@@ -84,57 +78,15 @@ class LinkNumberHudPanel extends StatelessWidget {
   }
 }
 
-class _TopStatCard extends StatelessWidget {
-  const _TopStatCard({
-    required this.icon,
-    required this.value,
-    required this.iconColor,
-    required this.compact,
-  });
-
-  final IconData icon;
-  final String value;
-  final Color iconColor;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: AppColors.color131A29.withValues(alpha: 0.72),
-        borderRadius: 12.borderRadiusAll,
-        border: Border.all(
-          color: AppColors.colorF586AA6.withValues(alpha: 0.5),
-        ),
-      ),
-      child: Padding(
-        padding: (compact ? 8 : 10).paddingAll,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Icon(icon, color: iconColor, size: compact ? 20 : 24),
-            (compact ? 6 : 8).width,
-            Text(
-              value,
-              style: AppStyles.h5(
-                color: AppColors.white,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CoinCard extends StatelessWidget {
-  const _CoinCard({
+class _ResourceHeaderCard extends StatelessWidget {
+  const _ResourceHeaderCard({
+    required this.stars,
     required this.coins,
     required this.onClaimReward,
     required this.compact,
   });
 
+  final int stars;
   final int coins;
   final VoidCallback onClaimReward;
   final bool compact;
@@ -143,10 +95,10 @@ class _CoinCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.color131A29.withValues(alpha: 0.72),
+        color: AppColors.color131A29.withValues(alpha: 0.84),
         borderRadius: 12.borderRadiusAll,
         border: Border.all(
-          color: AppColors.colorF586AA6.withValues(alpha: 0.5),
+          color: AppColors.colorF586AA6.withValues(alpha: 0.6),
         ),
       ),
       child: Padding(
@@ -155,30 +107,40 @@ class _CoinCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Icon(
-                  Icons.monetization_on_rounded,
-                  color: AppColors.colorF39702,
-                  size: compact ? 19 : 22,
+                Expanded(
+                  child: _ResourceMetric(
+                    icon: Icons.star_rounded,
+                    iconColor: AppColors.colorFFE53E,
+                    value: '$stars',
+                    compact: compact,
+                  ),
                 ),
-                (compact ? 4 : 6).width,
-                Text(
-                  '$coins',
-                  style: AppStyles.h5(
-                    color: AppColors.white,
-                    fontWeight: FontWeight.w700,
+                SizedBox(
+                  height: compact ? 26 : 30,
+                  child: VerticalDivider(
+                    width: compact ? 10 : 12,
+                    thickness: 1,
+                    color: AppColors.white.withValues(alpha: 0.18),
+                  ),
+                ),
+                Expanded(
+                  child: _ResourceMetric(
+                    icon: Icons.monetization_on_rounded,
+                    iconColor: AppColors.colorF39702,
+                    value: '$coins',
+                    compact: compact,
                   ),
                 ),
               ],
             ),
-            (compact ? 6 : 8).height,
+            (compact ? 8 : 10).height,
             InkWell(
               borderRadius: 8.borderRadiusAll,
               onTap: onClaimReward,
               child: Ink(
                 decoration: BoxDecoration(
-                  color: AppColors.color88CF66.withValues(alpha: 0.2),
+                  color: AppColors.color88CF66.withValues(alpha: 0.22),
                   borderRadius: 8.borderRadiusAll,
                   border: Border.all(color: AppColors.color88CF66),
                 ),
@@ -199,6 +161,38 @@ class _CoinCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ResourceMetric extends StatelessWidget {
+  const _ResourceMetric({
+    required this.icon,
+    required this.iconColor,
+    required this.value,
+    required this.compact,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String value;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        Icon(icon, color: iconColor, size: compact ? 20 : 22),
+        (compact ? 6 : 8).width,
+        Text(
+          value,
+          style: AppStyles.h4(
+            color: AppColors.white,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -679,20 +679,101 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     );
   }
 
-  String _hintText() {
-    final selectedSkill = widget.snapshot.selectedSkill;
+  String? _activeSkillGuideText(LinkNumberSnapshot snapshot) {
+    if (snapshot.isGameOver) {
+      return null;
+    }
+
+    final selectedSkill = snapshot.selectedSkill;
+    if (selectedSkill == null) {
+      return null;
+    }
+
     if (selectedSkill == LinkNumberSkillType.breakTile) {
       return LocaleKey.linkNumberSkillTapBreak.tr;
     }
 
-    if (selectedSkill == LinkNumberSkillType.swapTiles) {
-      if (widget.snapshot.pendingSwapCell == null) {
-        return LocaleKey.linkNumberSkillTapSwapFirst.tr;
-      }
-      return LocaleKey.linkNumberSkillTapSwapSecond.tr;
+    if (snapshot.pendingSwapCell == null) {
+      return LocaleKey.linkNumberSkillTapSwapFirst.tr;
+    }
+    return LocaleKey.linkNumberSkillTapSwapSecond.tr;
+  }
+
+  Widget _buildSkillGuideOverlay(LinkNumberSnapshot snapshot) {
+    final message = _activeSkillGuideText(snapshot);
+    if (message == null) {
+      return const SizedBox.shrink();
     }
 
-    return LocaleKey.linkNumberHint.tr;
+    final skill = snapshot.selectedSkill;
+    final accentColor = skill == LinkNumberSkillType.breakTile
+        ? AppColors.colorF39702
+        : AppColors.color2D7DD2;
+
+    return Positioned(
+      top: 8,
+      left: 8,
+      right: 8,
+      child: IgnorePointer(
+        child: Center(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 320),
+              child: DecoratedBox(
+                key: ValueKey<String>(message),
+                decoration: BoxDecoration(
+                  color: AppColors.black.withValues(alpha: 0.58),
+                  borderRadius: 12.borderRadiusAll,
+                  border: Border.all(
+                    color: accentColor.withValues(alpha: 0.84),
+                    width: 1.2,
+                  ),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: accentColor.withValues(alpha: 0.28),
+                      blurRadius: 12,
+                      spreadRadius: 0.6,
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.max,
+                    children: <Widget>[
+                      Icon(
+                        Icons.touch_app_rounded,
+                        size: 16,
+                        color: AppColors.white.withValues(alpha: 0.96),
+                      ),
+                      6.width,
+                      Expanded(
+                        child: Text(
+                          message,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppStyles.bodySmall(
+                            color: AppColors.white.withValues(alpha: 0.96),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildDropCascadeOverlay({
@@ -966,7 +1047,10 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     final snapshot = widget.snapshot;
     final rows = snapshot.board.length;
     final columns = snapshot.board.first.length;
-    final visualPath = snapshot.activePath.isNotEmpty
+    final shouldHideConnectionPath = _burstPath.isNotEmpty;
+    final visualPath = shouldHideConnectionPath
+        ? const <LinkNumberCell>[]
+        : snapshot.activePath.isNotEmpty
         ? snapshot.activePath
         : _resolvingPath;
 
@@ -1117,30 +1201,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
                               rows: rows,
                               columns: columns,
                             ),
-                            Positioned(
-                              left: 8,
-                              right: 8,
-                              bottom: 8,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: AppColors.black.withValues(
-                                    alpha: 0.45,
-                                  ),
-                                  borderRadius: 8.borderRadiusAll,
-                                ),
-                                child: Padding(
-                                  padding: 8.paddingAll,
-                                  child: Text(
-                                    _hintText(),
-                                    textAlign: TextAlign.center,
-                                    style: AppStyles.bodySmall(
-                                      color: AppColors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
+                            _buildSkillGuideOverlay(snapshot),
                             if (_burstPath.length >= 2)
                               _buildChainBurstOverlay(
                                 boardSize: boardSize,
