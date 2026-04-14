@@ -52,12 +52,10 @@ dependencies:
   smooth_page_indicator: ^2.0.1
   shared_preferences: ^2.5.5
   percent_indicator: ^4.2.2
-  flame: ^1.22.0
   common_widget:
     git:
       url: https://github.com/tuan-urani/common_widget
       ref: main
-  flame_forge2d: ^0.19.2+4
 
 dev_dependencies:
   flutter_test:
