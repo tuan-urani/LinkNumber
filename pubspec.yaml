@@ -86,7 +86,9 @@ flutter:
 
   assets:
     - .env
-    - assets/game/
+    - assets/game/balls/
+    - assets/game/effects/
+    - assets/game/effects/explosion/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see
