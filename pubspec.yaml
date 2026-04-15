@@ -85,6 +85,7 @@ flutter:
   assets:
     - .env
     - assets/game/balls/
+    - assets/game/balls/gif/
     - assets/game/effects/
     - assets/game/effects/explosion/
     - assets/game/skills/

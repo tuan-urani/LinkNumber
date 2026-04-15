@@ -87,60 +87,79 @@ class _BoardArea extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (_, constraints) {
-        final skillGap = compact ? 8.0 : 10.0;
-        final skillReservedHeight = compact ? 62.0 : 68.0;
-        final boardHeight =
-            constraints.maxHeight - skillReservedHeight - skillGap;
-        final side = math.min(constraints.maxWidth, boardHeight);
-        if (side <= 0) {
+        final skillPanelBottomPadding = compact ? 4.0 : 6.0;
+        final skillPanelHeight = compact ? 62.0 : 68.0;
+        final rows = snapshot.board.length;
+        if (rows <= 0 || snapshot.board.first.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final columns = snapshot.board.first.length;
+        final boardAspectRatio = columns / rows;
+        final boardWidth = math.min(
+          constraints.maxWidth,
+          constraints.maxHeight * boardAspectRatio,
+        );
+        final boardFrameHeight = boardWidth / boardAspectRatio;
+        if (boardWidth <= 0 || boardFrameHeight <= 0) {
           return const SizedBox.shrink();
         }
 
         return Align(
           alignment: Alignment.topCenter,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              SizedBox(
-                width: side,
-                height: side,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: AppColors.black.withValues(alpha: 0.18),
-                    borderRadius: 14.borderRadiusAll,
-                    border: Border.all(
-                      color: AppColors.colorF586AA6.withValues(alpha: 0.55),
+          child: SizedBox(
+            width: boardWidth,
+            height: constraints.maxHeight,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: <Widget>[
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: SizedBox(
+                    width: boardWidth,
+                    height: boardFrameHeight,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: AppColors.black.withValues(alpha: 0.18),
+                        borderRadius: 14.borderRadiusAll,
+                        border: Border.all(
+                          color: AppColors.colorF586AA6.withValues(alpha: 0.55),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: 10.paddingAll,
+                        child: LinkNumberBoard(
+                          snapshot: snapshot,
+                          onPanStart: controller.onPanStart,
+                          onPanUpdate: controller.onPanUpdate,
+                          onPanEnd: controller.onPanEnd,
+                          onCellTap: controller.onBoardTap,
+                          onRetry: snapshot.hasLost
+                              ? controller.retryLevel
+                              : controller.restartLevel,
+                          onNextLevel: controller.nextLevel,
+                        ),
+                      ),
                     ),
                   ),
-                  child: Padding(
-                    padding: 10.paddingAll,
-                    child: LinkNumberBoard(
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: skillPanelBottomPadding,
+                  child: SizedBox(
+                    height: skillPanelHeight,
+                    child: LinkNumberSkillPanel(
                       snapshot: snapshot,
-                      onPanStart: controller.onPanStart,
-                      onPanUpdate: controller.onPanUpdate,
-                      onPanEnd: controller.onPanEnd,
-                      onCellTap: controller.onBoardTap,
-                      onRetry: snapshot.hasLost
-                          ? controller.retryLevel
-                          : controller.restartLevel,
-                      onNextLevel: controller.nextLevel,
+                      compact: compact,
+                      onToggleBreakTile: () =>
+                          controller.selectSkill(LinkNumberSkillType.breakTile),
+                      onToggleSwapTiles: () =>
+                          controller.selectSkill(LinkNumberSkillType.swapTiles),
                     ),
                   ),
                 ),
-              ),
-              SizedBox(height: skillGap),
-              SizedBox(
-                width: side,
-                child: LinkNumberSkillPanel(
-                  snapshot: snapshot,
-                  compact: compact,
-                  onToggleBreakTile: () =>
-                      controller.selectSkill(LinkNumberSkillType.breakTile),
-                  onToggleSwapTiles: () =>
-                      controller.selectSkill(LinkNumberSkillType.swapTiles),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

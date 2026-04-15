@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gif/gif.dart';
 import 'package:get/get.dart';
 
 import 'package:flow_connection/src/extensions/int_extensions.dart';
@@ -174,6 +175,7 @@ class _HeaderStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasCustomContent = content != null;
     final titleStyle = compact
         ? AppStyles.bodyMedium(
             color: AppColors.white.withValues(alpha: 0.94),
@@ -205,7 +207,13 @@ class _HeaderStatCard extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: (dense ? (compact ? 4 : 5) : (compact ? 7 : 8)).paddingAll,
+        padding:
+            (dense
+                    ? (compact ? 4 : 5)
+                    : hasCustomContent
+                    ? (compact ? 5 : 6)
+                    : (compact ? 7 : 8))
+                .paddingAll,
         child: ConstrainedBox(
           constraints: BoxConstraints(minHeight: minHeight),
           child: Column(
@@ -217,7 +225,12 @@ class _HeaderStatCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: resolvedTitleStyle,
               ),
-              (dense ? (compact ? 1 : 2) : (compact ? 3 : 4)).height,
+              (dense
+                      ? (compact ? 1 : 2)
+                      : hasCustomContent
+                      ? (compact ? 1 : 2)
+                      : (compact ? 3 : 4))
+                  .height,
               valueWidget,
             ],
           ),
@@ -247,8 +260,8 @@ class _GoalCountInlineContent extends StatelessWidget {
 
     return Wrap(
       alignment: WrapAlignment.center,
-      spacing: compact ? 10 : 12,
-      runSpacing: compact ? 5 : 7,
+      spacing: compact ? 4 : 6,
+      runSpacing: compact ? 1 : 2,
       children: targets
           .map(
             (target) => _GoalTargetChip(
@@ -279,7 +292,7 @@ class _GoalTargetChip extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         _GoalMiniBall(value: value, compact: compact),
-        4.height,
+        1.height,
         Text(
           '$remaining',
           style: AppStyles.bodyMedium(
@@ -300,7 +313,60 @@ class _GoalMiniBall extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = compact ? 40.0 : 46.0;
+    final size = compact ? 52.0 : 60.0;
+    if (AppAssets.supportsLinkNumberAnimatedBall(value)) {
+      return SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: <Widget>[
+            Positioned.fill(
+              top: 0,
+              child: Align(
+                alignment: const Alignment(0, 0.86),
+                child: FractionallySizedBox(
+                  widthFactor: 0.92,
+                  heightFactor: 0.36,
+                  child: Opacity(
+                    opacity: 0.34,
+                    child: Image.asset(
+                      AppAssets.linkNumberTileBallShadowSoftPng,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: _linkNumberColorForValue(
+                      value,
+                    ).withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    spreadRadius: 0.4,
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: Gif(
+                  image: AssetImage(AppAssets.linkNumberBallIdleLoopGif(value)),
+                  autostart: Autostart.loop,
+                  useCache: true,
+                  fit: BoxFit.contain,
+                  placeholder: (_) => const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final baseColor = _linkNumberColorForValue(value);
     final topColor = Color.lerp(baseColor, AppColors.white, 0.34) ?? baseColor;
     final bottomColor =

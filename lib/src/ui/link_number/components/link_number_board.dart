@@ -2,11 +2,14 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:gif/gif.dart';
 import 'package:get/get.dart';
 
 import 'package:flow_connection/src/extensions/int_extensions.dart';
 import 'package:flow_connection/src/locale/locale_key.dart';
+import 'package:flow_connection/src/ui/link_number/interactor/link_number_gif_preloader.dart';
 import 'package:flow_connection/src/ui/link_number/interactor/link_number_snapshot.dart';
+import 'package:flow_connection/src/ui/widgets/app_circular_progress.dart';
 import 'package:flow_connection/src/utils/app_assets.dart';
 import 'package:flow_connection/src/utils/app_colors.dart';
 import 'package:flow_connection/src/utils/app_styles.dart';
@@ -37,7 +40,7 @@ int _boardValueAt(List<List<int>> board, LinkNumberCell cell) {
   return board[cell.row][cell.column];
 }
 
-/// LinkNumberBoard renders the 6x6 board and handles gesture interactions.
+/// LinkNumberBoard renders the gameplay board and handles gesture interactions.
 class LinkNumberBoard extends StatefulWidget {
   const LinkNumberBoard({
     required this.snapshot,
@@ -79,7 +82,9 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
   static const int _mergeBurstColumns = 6;
   static const int _mergeBurstRows = 5;
   static const int _mergeBurstFrameCount = _mergeBurstColumns * _mergeBurstRows;
+  static const bool _showLegacyChainBurstOverlay = false;
 
+  late final LinkNumberGifPreloader _gifPreloader;
   late final AnimationController _pathFlowController;
   late final AnimationController _pathResolveController;
   late final AnimationController _mergeBurstController;
@@ -90,6 +95,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
   LinkNumberCell? _mergeCenterCell;
   int _mergeScoreGain = 0;
   int _tilePopSequence = 0;
+  int _pathResolveSequence = 0;
   List<LinkNumberCell> _resolvingPath = const <LinkNumberCell>[];
   List<LinkNumberCell> _burstPath = const <LinkNumberCell>[];
   List<int> _burstPathValues = const <int>[];
@@ -104,6 +110,9 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
   @override
   void initState() {
     super.initState();
+    _gifPreloader = LinkNumberGifPreloader.instance;
+    _gifPreloader.progress.addListener(_onGifPreloadProgressChanged);
+    unawaited(_warmUpGifCache());
     _pathFlowController = AnimationController(
       vsync: this,
       duration: _pathFlowDuration,
@@ -140,6 +149,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
 
   @override
   void dispose() {
+    _gifPreloader.progress.removeListener(_onGifPreloadProgressChanged);
     _tilePopSequence++;
     _dropSequence++;
     _pathFlowController.dispose();
@@ -148,6 +158,21 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     _dropCascadeController.dispose();
     _cellPopController.dispose();
     super.dispose();
+  }
+
+  Future<void> _warmUpGifCache() async {
+    try {
+      await _gifPreloader.warmUpAll();
+    } catch (error, stackTrace) {
+      debugPrint('LinkNumber GIF warm-up failed: $error\n$stackTrace');
+    }
+  }
+
+  void _onGifPreloadProgressChanged() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
   }
 
   void _onMergeBurstStatusChanged(AnimationStatus status) {
@@ -232,6 +257,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     _pathFlowController.stop();
     _pathFlowController.value = 0;
     _pathResolveController.duration = Duration(milliseconds: durationMs);
+    _pathResolveSequence += 1;
     setState(() {
       _resolvingPath = List<LinkNumberCell>.from(path);
     });
@@ -632,14 +658,16 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
 
   double _tileScale({
     required LinkNumberCell cell,
+    required int value,
     required bool selected,
     required bool isSwapAnchor,
     required double destroyProgress,
     required double chainPulse,
   }) {
     var scale = 1.0;
+    final isAnimatedBall = AppAssets.supportsLinkNumberAnimatedBall(value);
 
-    if (selected) {
+    if (selected && !isAnimatedBall) {
       scale += 0.09 + (0.06 * chainPulse);
     }
 
@@ -652,7 +680,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
       scale += 0.18 * remaining;
     }
 
-    if (destroyProgress > 0) {
+    if (destroyProgress > 0 && !isAnimatedBall) {
       scale *= (1 - (0.82 * destroyProgress));
     }
 
@@ -1042,12 +1070,73 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     );
   }
 
+  Widget _buildGifLoadingBoard({
+    required double boardWidth,
+    required double boardHeight,
+    required double progress,
+  }) {
+    final percent = (progress * 100).round().clamp(0, 100);
+    return SizedBox(
+      width: boardWidth,
+      height: boardHeight,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.color131A29.withValues(alpha: 0.82),
+          borderRadius: 14.borderRadiusAll,
+          border: Border.all(color: AppColors.colorF586AA6, width: 4),
+        ),
+        child: Padding(
+          padding: 8.paddingAll,
+          child: ClipRRect(
+            borderRadius: 10.borderRadiusAll,
+            child: Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: AppColors.color131A29.withValues(alpha: 0.72),
+                    border: Border.all(
+                      color: AppColors.colorF586AA6.withValues(alpha: 0.6),
+                      width: 2,
+                    ),
+                  ),
+                ),
+                ColoredBox(
+                  color: AppColors.black.withValues(alpha: 0.38),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        const AppCircularProgress(size: 30),
+                        8.height,
+                        Text(
+                          '$percent%',
+                          style: AppStyles.bodyMedium(
+                            color: AppColors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final snapshot = widget.snapshot;
     final rows = snapshot.board.length;
     final columns = snapshot.board.first.length;
-    final shouldHideConnectionPath = _burstPath.isNotEmpty;
+    final gifPreloadReady = _gifPreloader.isReady;
+    final gifPreloadProgress = _gifPreloader.progress.value;
+    final shouldHideConnectionPath =
+        _showLegacyChainBurstOverlay && _burstPath.isNotEmpty;
     final visualPath = shouldHideConnectionPath
         ? const <LinkNumberCell>[]
         : snapshot.activePath.isNotEmpty
@@ -1056,169 +1145,175 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
 
     return LayoutBuilder(
       builder: (_, constraints) {
-        final side = math.min(constraints.maxWidth, constraints.maxHeight);
-
-        if (side <= 0) {
+        final boardWidth = constraints.maxWidth;
+        final boardHeight = constraints.maxHeight;
+        if (boardWidth <= 0 || boardHeight <= 0) {
           return const SizedBox.shrink();
         }
 
-        return Center(
-          child: SizedBox(
-            width: side,
-            height: side,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: AppColors.color131A29.withValues(alpha: 0.82),
-                borderRadius: 14.borderRadiusAll,
-                border: Border.all(color: AppColors.colorF586AA6, width: 4),
-              ),
-              child: Padding(
-                padding: 8.paddingAll,
-                child: ClipRRect(
-                  borderRadius: 10.borderRadiusAll,
-                  child: LayoutBuilder(
-                    builder: (_, boardConstraints) {
-                      final boardSize = Size(
-                        boardConstraints.maxWidth,
-                        boardConstraints.maxHeight,
-                      );
+        if (!gifPreloadReady) {
+          return _buildGifLoadingBoard(
+            boardWidth: boardWidth,
+            boardHeight: boardHeight,
+            progress: gifPreloadProgress,
+          );
+        }
 
-                      return GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTapDown: (details) =>
-                            widget.onCellTap(details.localPosition, boardSize),
-                        onPanStart: (details) =>
-                            widget.onPanStart(details.localPosition, boardSize),
-                        onPanUpdate: (details) => widget.onPanUpdate(
-                          details.localPosition,
-                          boardSize,
-                        ),
-                        onPanEnd: (_) => _handlePanEnd(),
-                        onPanCancel: _handlePanEnd,
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: <Widget>[
-                            DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: AppColors.color131A29.withValues(
-                                  alpha: 0.72,
-                                ),
-                                border: Border.all(
-                                  color: AppColors.colorF586AA6.withValues(
-                                    alpha: 0.6,
-                                  ),
-                                  width: 2,
-                                ),
+        return SizedBox(
+          width: boardWidth,
+          height: boardHeight,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.color131A29.withValues(alpha: 0.82),
+              borderRadius: 14.borderRadiusAll,
+              border: Border.all(color: AppColors.colorF586AA6, width: 4),
+            ),
+            child: Padding(
+              padding: 8.paddingAll,
+              child: ClipRRect(
+                borderRadius: 10.borderRadiusAll,
+                child: LayoutBuilder(
+                  builder: (_, boardConstraints) {
+                    final boardSize = Size(
+                      boardConstraints.maxWidth,
+                      boardConstraints.maxHeight,
+                    );
+
+                    return GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTapDown: (details) =>
+                          widget.onCellTap(details.localPosition, boardSize),
+                      onPanStart: (details) =>
+                          widget.onPanStart(details.localPosition, boardSize),
+                      onPanUpdate: (details) =>
+                          widget.onPanUpdate(details.localPosition, boardSize),
+                      onPanEnd: (_) => _handlePanEnd(),
+                      onPanCancel: _handlePanEnd,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: <Widget>[
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: AppColors.color131A29.withValues(
+                                alpha: 0.72,
                               ),
-                              child: AnimatedBuilder(
-                                animation: Listenable.merge(<Listenable>[
-                                  _cellPopController,
-                                  _pathResolveController,
-                                  _pathFlowController,
-                                ]),
-                                builder: (_, child) {
-                                  return Column(
-                                    children: List<Widget>.generate(rows, (
-                                      row,
-                                    ) {
-                                      return Expanded(
-                                        child: Row(
-                                          children: List<Widget>.generate(
-                                            columns,
-                                            (column) {
-                                              final cell = LinkNumberCell(
-                                                row: row,
-                                                column: column,
-                                              );
-                                              final isSwapAnchor =
-                                                  snapshot.pendingSwapCell ==
-                                                  cell;
-                                              final destroyProgress =
-                                                  _destroyProgressForCell(cell);
-                                              final pathIndex = visualPath
-                                                  .indexOf(cell);
-                                              final isInVisualPath =
-                                                  pathIndex >= 0;
-                                              final chainPulse =
-                                                  snapshot.activePath.length >=
-                                                          2 &&
-                                                      isInVisualPath
-                                                  ? _chainPulse(pathIndex)
-                                                  : 0.0;
-                                              final hiddenByDrop =
-                                                  _pendingMergeChangedCells
-                                                      .contains(cell);
-                                              return Expanded(
-                                                child: _CellTile(
-                                                  value: snapshot
-                                                      .board[row][column],
-                                                  selected: isInVisualPath,
-                                                  isSwapAnchor: isSwapAnchor,
-                                                  isPopping: _poppingCells
-                                                      .contains(cell),
-                                                  chainPulse: chainPulse,
-                                                  destroyProgress:
-                                                      destroyProgress,
-                                                  scale: _tileScale(
-                                                    cell: cell,
-                                                    selected: isInVisualPath,
-                                                    isSwapAnchor: isSwapAnchor,
-                                                    destroyProgress:
-                                                        destroyProgress,
-                                                    chainPulse: chainPulse,
+                              border: Border.all(
+                                color: AppColors.colorF586AA6.withValues(
+                                  alpha: 0.6,
+                                ),
+                                width: 2,
+                              ),
+                            ),
+                            child: AnimatedBuilder(
+                              animation: Listenable.merge(<Listenable>[
+                                _cellPopController,
+                                _pathResolveController,
+                                _pathFlowController,
+                              ]),
+                              builder: (_, child) {
+                                return Column(
+                                  children: List<Widget>.generate(rows, (row) {
+                                    return Expanded(
+                                      child: Row(
+                                        children: List<Widget>.generate(columns, (
+                                          column,
+                                        ) {
+                                          final cell = LinkNumberCell(
+                                            row: row,
+                                            column: column,
+                                          );
+                                          final isSwapAnchor =
+                                              snapshot.pendingSwapCell == cell;
+                                          final destroyProgress =
+                                              _destroyProgressForCell(cell);
+                                          final pathIndex = visualPath.indexOf(
+                                            cell,
+                                          );
+                                          final isInVisualPath = pathIndex >= 0;
+                                          final chainPulse =
+                                              snapshot.activePath.length >= 2 &&
+                                                  isInVisualPath
+                                              ? _chainPulse(pathIndex)
+                                              : 0.0;
+                                          final hiddenByDrop =
+                                              _pendingMergeChangedCells
+                                                  .contains(cell);
+                                          final tileValue =
+                                              snapshot.board[row][column];
+                                          return Expanded(
+                                            child: _CellTile(
+                                              value: tileValue,
+                                              selected: isInVisualPath,
+                                              isSwapAnchor: isSwapAnchor,
+                                              isPopping: _poppingCells.contains(
+                                                cell,
+                                              ),
+                                              chainPulse: chainPulse,
+                                              destroyProgress: destroyProgress,
+                                              scale: _tileScale(
+                                                cell: cell,
+                                                value: tileValue,
+                                                selected: isInVisualPath,
+                                                isSwapAnchor: isSwapAnchor,
+                                                destroyProgress:
+                                                    destroyProgress,
+                                                chainPulse: chainPulse,
+                                              ),
+                                              destroyingAnimationKey:
+                                                  ValueKey<String>(
+                                                    'destroy_${_pathResolveSequence}_${row}_$column',
                                                   ),
-                                                  hidden: hiddenByDrop,
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      );
-                                    }),
-                                  );
-                                },
-                              ),
+                                              hidden: hiddenByDrop,
+                                            ),
+                                          );
+                                        }),
+                                      ),
+                                    );
+                                  }),
+                                );
+                              },
                             ),
-                            IgnorePointer(
-                              child: RepaintBoundary(
-                                child: CustomPaint(
-                                  painter: _PathPainter(
-                                    path: visualPath,
-                                    board: snapshot.board,
-                                    rows: rows,
-                                    columns: columns,
-                                  ),
+                          ),
+                          IgnorePointer(
+                            child: RepaintBoundary(
+                              child: CustomPaint(
+                                painter: _PathPainter(
+                                  path: visualPath,
+                                  board: snapshot.board,
+                                  rows: rows,
+                                  columns: columns,
                                 ),
                               ),
                             ),
-                            _buildDropCascadeOverlay(
+                          ),
+                          _buildDropCascadeOverlay(
+                            boardSize: boardSize,
+                            rows: rows,
+                            columns: columns,
+                          ),
+                          _buildMergeFloatingScore(
+                            boardSize: boardSize,
+                            rows: rows,
+                            columns: columns,
+                          ),
+                          _buildSkillGuideOverlay(snapshot),
+                          if (_showLegacyChainBurstOverlay &&
+                              _burstPath.length >= 2)
+                            _buildChainBurstOverlay(
                               boardSize: boardSize,
                               rows: rows,
                               columns: columns,
                             ),
-                            _buildMergeFloatingScore(
-                              boardSize: boardSize,
-                              rows: rows,
-                              columns: columns,
+                          if (snapshot.isGameOver)
+                            _ResultOverlay(
+                              hasWon: snapshot.hasWon,
+                              onRetry: widget.onRetry,
+                              onNextLevel: widget.onNextLevel,
                             ),
-                            _buildSkillGuideOverlay(snapshot),
-                            if (_burstPath.length >= 2)
-                              _buildChainBurstOverlay(
-                                boardSize: boardSize,
-                                rows: rows,
-                                columns: columns,
-                              ),
-                            if (snapshot.isGameOver)
-                              _ResultOverlay(
-                                hasWon: snapshot.hasWon,
-                                onRetry: widget.onRetry,
-                                onNextLevel: widget.onNextLevel,
-                              ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -1230,6 +1325,8 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
 }
 
 class _CellTile extends StatelessWidget {
+  static const double _tileContentFactor = 1.12;
+
   const _CellTile({
     required this.value,
     required this.selected,
@@ -1238,6 +1335,7 @@ class _CellTile extends StatelessWidget {
     required this.chainPulse,
     required this.destroyProgress,
     required this.scale,
+    this.destroyingAnimationKey,
     this.hidden = false,
     this.showCellBorder = true,
   });
@@ -1249,6 +1347,7 @@ class _CellTile extends StatelessWidget {
   final double chainPulse;
   final double destroyProgress;
   final double scale;
+  final Key? destroyingAnimationKey;
   final bool hidden;
   final bool showCellBorder;
 
@@ -1257,6 +1356,11 @@ class _CellTile extends StatelessWidget {
     final baseColor = _numberColor(value);
     final topColor = _ballTopColor(baseColor);
     final bottomColor = _ballBottomColor(baseColor);
+    final supportsAnimatedBall = AppAssets.supportsLinkNumberAnimatedBall(
+      value,
+    );
+    final isDestroyingAnimatedBall =
+        supportsAnimatedBall && destroyProgress > 0;
     final glowAlpha = isSwapAnchor
         ? 0.56
         : selected
@@ -1264,11 +1368,24 @@ class _CellTile extends StatelessWidget {
         : isPopping
         ? 0.44
         : 0.34;
-    final opacity = (1 - destroyProgress).clamp(0.0, 1.0);
-    final blurFactor = 1 + (destroyProgress * 0.85);
-    final dynamicGlow = selected ? chainPulse : 0.0;
-    final dynamicLift = selected ? (-2.2 * chainPulse) : 0.0;
+    final opacity = isDestroyingAnimatedBall
+        ? 1.0
+        : (1 - destroyProgress).clamp(0.0, 1.0);
+    final blurFactor = isDestroyingAnimatedBall
+        ? 1.0
+        : 1 + (destroyProgress * 0.85);
+    final dynamicGlow = (!supportsAnimatedBall && selected) ? chainPulse : 0.0;
+    final dynamicLift = (!supportsAnimatedBall && selected)
+        ? (-2.2 * chainPulse)
+        : 0.0;
     final tileOpacity = hidden ? 0.0 : opacity;
+    final animatedBallAssetPath = supportsAnimatedBall
+        ? (isDestroyingAnimatedBall
+              ? AppAssets.linkNumberBallDestroyingOutGif(value)
+              : selected
+              ? AppAssets.linkNumberBallSelectedPathLoopGif(value)
+              : AppAssets.linkNumberBallIdleLoopGif(value))
+        : null;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -1281,8 +1398,8 @@ class _CellTile extends StatelessWidget {
       ),
       child: Center(
         child: FractionallySizedBox(
-          widthFactor: 0.72,
-          heightFactor: 0.72,
+          widthFactor: _tileContentFactor,
+          heightFactor: _tileContentFactor,
           child: Opacity(
             opacity: tileOpacity,
             child: Transform.translate(
@@ -1293,7 +1410,7 @@ class _CellTile extends StatelessWidget {
                   clipBehavior: Clip.none,
                   alignment: Alignment.center,
                   children: <Widget>[
-                    if (selected)
+                    if (!supportsAnimatedBall && selected)
                       Positioned.fill(
                         child: DecoratedBox(
                           decoration: BoxDecoration(
@@ -1330,119 +1447,145 @@ class _CellTile extends StatelessWidget {
                         ),
                       ),
                     ),
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: <BoxShadow>[
-                          BoxShadow(
-                            color: baseColor.withValues(alpha: glowAlpha),
-                            blurRadius:
-                                (isSwapAnchor
-                                    ? 18
-                                    : selected
-                                    ? 16
-                                    : isPopping
-                                    ? 14
-                                    : 8) *
-                                blurFactor,
-                            spreadRadius: selected || isSwapAnchor ? 1.2 : 0.45,
-                          ),
-                          BoxShadow(
-                            color: AppColors.black.withValues(alpha: 0.22),
-                            blurRadius: 8 * blurFactor,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: AspectRatio(
-                        aspectRatio: 1,
-                        child: ClipOval(
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: <Widget>[
-                              DecoratedBox(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: RadialGradient(
-                                    center: const Alignment(-0.24, -0.28),
-                                    radius: 1.05,
-                                    colors: <Color>[topColor, bottomColor],
+                    if (supportsAnimatedBall)
+                      Positioned.fill(
+                        child: _AnimatedBallGif(
+                          key: isDestroyingAnimatedBall
+                              ? destroyingAnimationKey
+                              : ValueKey<String>(animatedBallAssetPath!),
+                          assetPath: animatedBallAssetPath!,
+                          autostart: isDestroyingAnimatedBall
+                              ? Autostart.once
+                              : Autostart.loop,
+                        ),
+                      )
+                    else
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: baseColor.withValues(alpha: glowAlpha),
+                              blurRadius:
+                                  (isSwapAnchor
+                                      ? 18
+                                      : selected
+                                      ? 16
+                                      : isPopping
+                                      ? 14
+                                      : 8) *
+                                  blurFactor,
+                              spreadRadius: selected || isSwapAnchor
+                                  ? 1.2
+                                  : 0.45,
+                            ),
+                            BoxShadow(
+                              color: AppColors.black.withValues(alpha: 0.22),
+                              blurRadius: 8 * blurFactor,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: AspectRatio(
+                          aspectRatio: 1,
+                          child: ClipOval(
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: <Widget>[
+                                DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: RadialGradient(
+                                      center: const Alignment(-0.24, -0.28),
+                                      radius: 1.05,
+                                      colors: <Color>[topColor, bottomColor],
+                                    ),
                                   ),
                                 ),
-                              ),
-                              Opacity(
-                                opacity: 0.36 + (0.26 * dynamicGlow),
-                                child: Image.asset(
-                                  AppAssets.linkNumberTileBallHighlightPng,
-                                  fit: BoxFit.cover,
+                                Opacity(
+                                  opacity: 0.36 + (0.26 * dynamicGlow),
+                                  child: Image.asset(
+                                    AppAssets.linkNumberTileBallHighlightPng,
+                                    fit: BoxFit.cover,
+                                  ),
                                 ),
-                              ),
-                              Align(
-                                alignment: const Alignment(-0.28, -0.33),
-                                child: FractionallySizedBox(
-                                  widthFactor: 0.38,
-                                  heightFactor: 0.38,
-                                  child: DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: RadialGradient(
-                                        colors: <Color>[
-                                          AppColors.white.withValues(
-                                            alpha: 0.62,
-                                          ),
-                                          AppColors.white.withValues(
-                                            alpha: 0.06,
-                                          ),
-                                        ],
+                                Align(
+                                  alignment: const Alignment(-0.28, -0.33),
+                                  child: FractionallySizedBox(
+                                    widthFactor: 0.38,
+                                    heightFactor: 0.38,
+                                    child: DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: RadialGradient(
+                                          colors: <Color>[
+                                            AppColors.white.withValues(
+                                              alpha: 0.62,
+                                            ),
+                                            AppColors.white.withValues(
+                                              alpha: 0.06,
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              DecoratedBox(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isSwapAnchor
-                                        ? AppColors.colorFFE53E
-                                        : selected
-                                        ? AppColors.white
-                                        : AppColors.transparent,
-                                    width: isSwapAnchor
-                                        ? 3
-                                        : selected
-                                        ? (1.8 + (1.4 * dynamicGlow))
-                                        : 2,
+                                DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isSwapAnchor
+                                          ? AppColors.colorFFE53E
+                                          : selected
+                                          ? AppColors.white
+                                          : AppColors.transparent,
+                                      width: isSwapAnchor
+                                          ? 3
+                                          : selected
+                                          ? (1.8 + (1.4 * dynamicGlow))
+                                          : 2,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              Center(
-                                child: FittedBox(
-                                  child: Text(
-                                    '$value',
-                                    style:
-                                        AppStyles.h5(
-                                          color: AppColors.white,
-                                          fontWeight: FontWeight.w700,
-                                        ).copyWith(
-                                          shadows: <Shadow>[
-                                            Shadow(
-                                              color: AppColors.black.withValues(
-                                                alpha: 0.35,
+                                Center(
+                                  child: FittedBox(
+                                    child: Text(
+                                      '$value',
+                                      style:
+                                          AppStyles.h5(
+                                            color: AppColors.white,
+                                            fontWeight: FontWeight.w700,
+                                          ).copyWith(
+                                            shadows: <Shadow>[
+                                              Shadow(
+                                                color: AppColors.black
+                                                    .withValues(alpha: 0.35),
+                                                blurRadius: 4,
+                                                offset: const Offset(0, 1),
                                               ),
-                                              blurRadius: 4,
-                                              offset: const Offset(0, 1),
-                                            ),
-                                          ],
-                                        ),
+                                            ],
+                                          ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    if (supportsAnimatedBall && isSwapAnchor)
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.colorFFE53E,
+                              width: 3,
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -1463,6 +1606,28 @@ class _CellTile extends StatelessWidget {
 
   Color _ballBottomColor(Color baseColor) {
     return Color.lerp(baseColor, AppColors.black, 0.14) ?? baseColor;
+  }
+}
+
+class _AnimatedBallGif extends StatelessWidget {
+  const _AnimatedBallGif({
+    super.key,
+    required this.assetPath,
+    required this.autostart,
+  });
+
+  final String assetPath;
+  final Autostart autostart;
+
+  @override
+  Widget build(BuildContext context) {
+    return Gif(
+      image: AssetImage(assetPath),
+      autostart: autostart,
+      useCache: true,
+      fit: BoxFit.contain,
+      placeholder: (_) => const SizedBox.shrink(),
+    );
   }
 }
 

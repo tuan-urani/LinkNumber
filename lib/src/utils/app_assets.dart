@@ -24,4 +24,28 @@ class AppAssets {
       'assets/game/effects/path_glow.png';
   static const String linkNumberSkillBreakAxePng =
       'assets/game/skills/link_number_skill_break_axe.png';
+
+  static const List<int> linkNumberAnimatedBallValues = <int>[
+    2,
+    4,
+    8,
+    16,
+    32,
+    64,
+  ];
+
+  static final Set<int> _linkNumberAnimatedBallValueSet =
+      linkNumberAnimatedBallValues.toSet();
+
+  static bool supportsLinkNumberAnimatedBall(int value) =>
+      _linkNumberAnimatedBallValueSet.contains(value);
+
+  static String linkNumberBallIdleLoopGif(int value) =>
+      'assets/game/balls/gif/ball_${value}_idle_loop.gif';
+
+  static String linkNumberBallSelectedPathLoopGif(int value) =>
+      'assets/game/balls/gif/ball_${value}_selected_path_loop.gif';
+
+  static String linkNumberBallDestroyingOutGif(int value) =>
+      'assets/game/balls/gif/ball_${value}_destroying_out.gif';
 }

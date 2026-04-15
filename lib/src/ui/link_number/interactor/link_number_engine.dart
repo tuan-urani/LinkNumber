@@ -11,8 +11,8 @@ class LinkNumberEngine {
     );
   }
 
-  static const int rows = 6;
-  static const int columns = 6;
+  static const int rows = 7;
+  static const int columns = 5;
 
   // Global tuning constants.
   static const double kDifficultyScalar = 1.0;
