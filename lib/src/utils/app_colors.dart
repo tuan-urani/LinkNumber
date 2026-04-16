@@ -145,6 +145,9 @@ class AppColors {
   static const splashTileShadowOrange = Color(0xFFCC6C00);
   static const splashProgressTrack = Color(0xFF09084F);
   static const splashProgressFill = Color(0xFFFFDB12);
+  static const gameMenuPlayTop = Color(0xFF36D46A);
+  static const gameMenuPlayBottom = Color(0xFF0E9F44);
+  static const gameMenuPlayShadow = Color(0xFF0A672E);
 
   // ===========================================================================
   // BACKGROUND

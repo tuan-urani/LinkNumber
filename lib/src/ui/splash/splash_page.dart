@@ -74,18 +74,24 @@ class _SplashPageState extends State<SplashPage> {
             SafeArea(
               child: Padding(
                 padding: 24.paddingHorizontal,
-                child: Column(
+                child: Stack(
                   children: <Widget>[
-                    const Spacer(flex: 2),
-                    const SplashLogo(),
-                    const Spacer(flex: 3),
-                    ValueListenableBuilder<double>(
-                      valueListenable: _gifPreloader.progress,
-                      builder: (_, value, _) {
-                        return SplashLoadingSection(progress: value);
-                      },
+                    const Align(
+                      alignment: Alignment.center,
+                      child: SplashLogo(),
                     ),
-                    34.height,
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: 34.paddingBottom,
+                        child: ValueListenableBuilder<double>(
+                          valueListenable: _gifPreloader.progress,
+                          builder: (_, value, _) {
+                            return SplashLoadingSection(progress: value);
+                          },
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

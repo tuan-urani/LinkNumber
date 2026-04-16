@@ -84,6 +84,9 @@ flutter:
 
   assets:
     - .env
+    - assets/coin.png
+    - assets/current_level.png
+    - assets/main_slogan.png
     - assets/game/balls/
     - assets/game/balls/gif/
     - assets/game/effects/

@@ -24,7 +24,10 @@ class GameMenuPlayButton extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: <Color>[AppColors.primaryLight, AppColors.primary],
+              colors: <Color>[
+                AppColors.gameMenuPlayTop,
+                AppColors.gameMenuPlayBottom,
+              ],
             ),
             borderRadius: 16.borderRadiusAll,
             border: Border.all(
@@ -33,9 +36,14 @@ class GameMenuPlayButton extends StatelessWidget {
             ),
             boxShadow: <BoxShadow>[
               BoxShadow(
-                color: AppColors.color1D2410.withValues(alpha: 0.8),
+                color: AppColors.gameMenuPlayShadow,
                 offset: const Offset(0, 6),
                 blurRadius: 0,
+              ),
+              BoxShadow(
+                color: AppColors.black.withValues(alpha: 0.28),
+                offset: const Offset(0, 10),
+                blurRadius: 14,
               ),
             ],
           ),

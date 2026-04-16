@@ -86,7 +86,7 @@ class _BoardArea extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (_, constraints) {
-        final skillPanelHeight = compact ? 98.0 : 108.0;
+        final skillPanelHeight = compact ? 84.0 : 94.0;
         final skillPanelTopSpacing = compact ? 6.0 : 8.0;
         final rows = snapshot.board.length;
         if (rows <= 0 || snapshot.board.first.isEmpty) {

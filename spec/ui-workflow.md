@@ -9,18 +9,21 @@ Features:
 - Splash routes to this menu screen as the first destination.
 - Displays only one game card (Link Number) with localized content.
 - Navigates to Link Number via GetX route.
+- Includes quick QA buttons to preview Link Number result modals (win/lose) directly from menu.
 
 ### 2. UI Structure
 - Screen: `GameMenuPage`
 - Components:
 - `GameMenuHeader`: menu title and subtitle.
 - `GameMenuGameCard`: Link Number entry card with icon, description, and action label.
+- `GameMenuModalTestButton`: quick action buttons to open win/lose modal previews for UI verification.
 
 ### 3. User Flow & Logic
 1. User opens app and sees splash.
 2. After splash delay, app navigates to `GameMenuPage`.
 3. User taps the Link Number card.
 4. App pushes `LinkNumberPage`.
+5. User can tap `Test win modal` / `Test lose modal` to open in-place preview dialogs for result UI.
 
 ### 4. Key Dependencies
 - `GameMenuController`: source of menu item metadata (Link Number only).
@@ -46,6 +49,9 @@ Features:
 - `LinkNumberGoalPanel`: left panel for level/mode, goal, moves, and quick actions.
 - `LinkNumberBoard`: center board for drag path, skill tap actions, and result overlay.
 - `LinkNumberHudPanel`: right panel for stars, coins, reward button, and skills.
+- `ResultOverlay` (inside `LinkNumberBoard`): animated game-over popup with contextual visual style:
+  - Win state: trophy badge, score recap, `Retry` + `Next` actions.
+  - Lose state: fail badge, remaining objective recap, `Play Again` action.
 - Mobile responsive behavior:
   - Top panel height is adaptive by screen height (percentage-based with min/max clamp).
   - Compact HUD panel uses internal vertical scroll to avoid overflow on short screens.
@@ -70,7 +76,10 @@ Features:
 6. Moves decrease by 1 after each completed turn.
 7. If current level goal is completed, game moves to win state.
 8. If moves reach zero before completing goal, game moves to lose state.
-9. User can clear current path or restart to play again.
+9. On game over, board shows an animated result overlay:
+- highlights level + objective summary.
+- uses contextual CTA set based on result (win vs lose).
+10. User can clear current path or restart to play again.
 
 ### 4. Goal Modes
 1. `GoalCount` (value + required count):
@@ -231,3 +240,32 @@ Features:
 - `LinkNumberController`: state bridge between engine and UI.
 - `LocaleKey`, `lang_en.dart`, `lang_ja.dart`: localized game copy.
 - `AppPages`: route registration and navigation entry.
+
+## Link Number Asset Preview
+**Path**: lib/src/ui/link_number_asset_preview
+
+### 1. Description
+Goal: Provide a visual board to quickly validate all Link Number ball assets in one place.
+Features:
+- Preview static ball layers (`base`, `highlight`, `shadow`) with missing-state badges.
+- Preview animated GIF states (`idle`, `selected`, `destroying`) for each ball value (`2` to `2048`).
+- Show availability status (`OK`/`Missing`) by checking real asset paths from bundle.
+
+### 2. UI Structure
+- Screen: `LinkNumberAssetPreviewPage`
+- Components:
+- `LinkNumberAssetPreviewStaticSection`: static layers overview cards.
+- `LinkNumberAssetPreviewAnimatedSection`: per-value animated asset cards with all 3 states.
+
+### 3. User Flow & Logic
+1. User opens `GameMenuPage`.
+2. User taps `Preview assets`.
+3. App navigates to `LinkNumberAssetPreviewPage`.
+4. Controller loads and verifies all expected ball asset paths.
+5. Page renders a full preview board with status badges to spot missing files immediately.
+
+### 4. Key Dependencies
+- `LinkNumberAssetPreviewController`: builds preview data and checks asset availability via `rootBundle`.
+- `AppAssets`: source of truth for all Link Number ball asset paths.
+- `AppPages`: route mapping from Game Menu to preview page.
+- `LocaleKey`, `lang_en.dart`, `lang_ja.dart`: localized labels and statuses for preview UI.

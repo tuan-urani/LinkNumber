@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:flow_connection/src/extensions/int_extensions.dart';
 import 'package:flow_connection/src/locale/locale_key.dart';
 import 'package:flow_connection/src/ui/link_number/interactor/link_number_snapshot.dart';
+import 'package:flow_connection/src/utils/app_assets.dart';
 import 'package:flow_connection/src/utils/app_colors.dart';
 import 'package:flow_connection/src/utils/app_styles.dart';
 
@@ -42,7 +43,6 @@ class LinkNumberHudPanel extends StatelessWidget {
           padding: EdgeInsets.zero,
           children: <Widget>[
             _ResourceHeaderCard(
-              stars: snapshot.stars,
               coins: snapshot.coins,
               onClaimReward: onClaimReward,
               compact: compact,
@@ -80,13 +80,11 @@ class LinkNumberHudPanel extends StatelessWidget {
 
 class _ResourceHeaderCard extends StatelessWidget {
   const _ResourceHeaderCard({
-    required this.stars,
     required this.coins,
     required this.onClaimReward,
     required this.compact,
   });
 
-  final int stars;
   final int coins;
   final VoidCallback onClaimReward;
   final bool compact;
@@ -107,30 +105,13 @@ class _ResourceHeaderCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                Expanded(
-                  child: _ResourceMetric(
-                    icon: Icons.star_rounded,
-                    iconColor: AppColors.colorFFE53E,
-                    value: '$stars',
-                    compact: compact,
-                  ),
-                ),
-                SizedBox(
-                  height: compact ? 26 : 30,
-                  child: VerticalDivider(
-                    width: compact ? 10 : 12,
-                    thickness: 1,
-                    color: AppColors.white.withValues(alpha: 0.18),
-                  ),
-                ),
-                Expanded(
-                  child: _ResourceMetric(
-                    icon: Icons.monetization_on_rounded,
-                    iconColor: AppColors.colorF39702,
-                    value: '$coins',
-                    compact: compact,
-                  ),
+                _ResourceMetric(
+                  iconAssetPath: AppAssets.gameMenuCoinPng,
+                  iconColor: AppColors.colorF39702,
+                  value: '$coins',
+                  compact: compact,
                 ),
               ],
             ),
@@ -167,13 +148,15 @@ class _ResourceHeaderCard extends StatelessWidget {
 
 class _ResourceMetric extends StatelessWidget {
   const _ResourceMetric({
-    required this.icon,
+    this.icon,
+    this.iconAssetPath,
     required this.iconColor,
     required this.value,
     required this.compact,
-  });
+  }) : assert(icon != null || iconAssetPath != null);
 
-  final IconData icon;
+  final IconData? icon;
+  final String? iconAssetPath;
   final Color iconColor;
   final String value;
   final bool compact;
@@ -183,7 +166,15 @@ class _ResourceMetric extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: <Widget>[
-        Icon(icon, color: iconColor, size: compact ? 20 : 22),
+        if (iconAssetPath != null)
+          Image.asset(
+            iconAssetPath!,
+            width: compact ? 20 : 22,
+            height: compact ? 20 : 22,
+            fit: BoxFit.contain,
+          )
+        else
+          Icon(icon, color: iconColor, size: compact ? 20 : 22),
         (compact ? 6 : 8).width,
         Text(
           value,

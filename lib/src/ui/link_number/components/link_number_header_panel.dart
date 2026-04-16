@@ -26,42 +26,8 @@ Color _linkNumberColorForValue(int value) {
   };
 }
 
-double _goalCountProgress(List<LinkNumberGoalTarget> targets) {
-  if (targets.isEmpty) {
-    return 0;
-  }
-
-  final totalRequired = targets.fold<int>(
-    0,
-    (sum, target) => sum + target.required,
-  );
-  if (totalRequired <= 0) {
-    return 1;
-  }
-
-  var totalRemaining = 0;
-  for (final target in targets) {
-    final boundedRemaining = target.remaining < 0
-        ? 0
-        : (target.remaining > target.required
-              ? target.required
-              : target.remaining);
-    totalRemaining += boundedRemaining;
-  }
-
-  final completed = (totalRequired - totalRemaining).clamp(0, totalRequired);
-  return completed.toDouble() / totalRequired;
-}
-
-double _goalScoreProgress(LinkNumberSnapshot snapshot) {
-  if (snapshot.scoreTarget <= 0) {
-    return 1;
-  }
-  return (snapshot.score / snapshot.scoreTarget).clamp(0, 1).toDouble();
-}
-
 /// LinkNumberHeaderPanel renders top HUD:
-/// row 1 => Coins + Stars.
+/// row 1 => Coins.
 /// row 2 => Goal + Moves/Current stats.
 class LinkNumberHeaderPanel extends StatelessWidget {
   const LinkNumberHeaderPanel({
@@ -87,29 +53,30 @@ class LinkNumberHeaderPanel extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: 16.borderRadiusAll,
+        borderRadius: 22.borderRadiusAll,
         gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: <Color>[
-            AppColors.color1C274C.withValues(alpha: 0.86),
+            AppColors.color1C274C.withValues(alpha: 0.76),
             AppColors.color131A29.withValues(alpha: 0.9),
+            AppColors.color101828.withValues(alpha: 0.96),
           ],
         ),
         border: Border.all(
-          color: AppColors.colorF59AEF9.withValues(alpha: 0.74),
-          width: 1.1,
+          color: AppColors.colorFBFC9DE.withValues(alpha: 0.5),
+          width: 1,
         ),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: AppColors.color1A0095FF.withValues(alpha: 0.58),
-            blurRadius: 22,
-            spreadRadius: 0.3,
+            color: AppColors.color1A2D7DD2.withValues(alpha: 0.95),
+            blurRadius: 28,
+            spreadRadius: 0.4,
           ),
           BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.28),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: AppColors.black.withValues(alpha: 0.34),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -119,24 +86,14 @@ class LinkNumberHeaderPanel extends StatelessWidget {
           children: <Widget>[
             Row(
               children: <Widget>[
-                Expanded(
-                  child: _CornerStatBadge(
-                    icon: Icons.monetization_on_rounded,
-                    value: '${snapshot.coins}',
-                    iconColor: AppColors.colorF39702,
-                    compact: compact,
-                    onTap: onClaimReward,
-                  ),
-                ),
-                cardGap.width,
-                Expanded(
-                  child: _CornerStatBadge(
-                    icon: Icons.star_rounded,
-                    value: '${snapshot.stars}',
-                    iconColor: AppColors.colorFFE53E,
-                    compact: compact,
-                    onTap: null,
-                  ),
+                const Spacer(),
+                _CornerStatBadge(
+                  iconAssetPath: AppAssets.gameMenuCoinPng,
+                  value: '${snapshot.coins}',
+                  iconColor: AppColors.colorF39702,
+                  compact: compact,
+                  onTap: onClaimReward,
+                  showPlus: true,
                 ),
               ],
             ),
@@ -266,27 +223,28 @@ class _HeaderStatCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: 13.borderRadiusAll,
         border: Border.all(
-          color: AppColors.colorF59AEF9.withValues(alpha: 0.72),
+          color: accentColor.withValues(alpha: 0.38),
           width: 1,
         ),
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
           colors: <Color>[
-            AppColors.color1C274C.withValues(alpha: 0.86),
-            AppColors.color131A29.withValues(alpha: 0.9),
+            AppColors.colorFE4F3FF.withValues(alpha: 0.22),
+            AppColors.color1C274C.withValues(alpha: 0.72),
+            AppColors.color131A29.withValues(alpha: 0.92),
           ],
         ),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: AppColors.color1A2D7DD2.withValues(alpha: 0.5),
-            blurRadius: 16,
+            color: accentColor.withValues(alpha: 0.3),
+            blurRadius: 14,
             spreadRadius: 0.2,
           ),
           BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.26),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+            color: AppColors.black.withValues(alpha: 0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -316,7 +274,7 @@ class _HeaderStatCard extends StatelessWidget {
                   child: Divider(
                     height: 1,
                     thickness: 1,
-                    color: AppColors.white.withValues(alpha: 0.15),
+                    color: accentColor.withValues(alpha: 0.34),
                   ),
                 ),
                 (dense
@@ -343,10 +301,6 @@ class _GoalPrimaryContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progress = snapshot.isGoalCountMode
-        ? _goalCountProgress(snapshot.goalTargets)
-        : _goalScoreProgress(snapshot);
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
@@ -377,71 +331,6 @@ class _GoalPrimaryContent extends StatelessWidget {
   }
 }
 
-class _GoalProgressBar extends StatelessWidget {
-  const _GoalProgressBar({required this.progress, required this.compact});
-
-  final double progress;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final clampedProgress = progress.clamp(0, 1).toDouble();
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth.isFinite
-            ? constraints.maxWidth * clampedProgress
-            : 0.0;
-
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: 999.borderRadiusAll,
-            border: Border.all(
-              color: AppColors.colorF59AEF9.withValues(alpha: 0.42),
-            ),
-            gradient: LinearGradient(
-              colors: <Color>[
-                AppColors.color1C274C.withValues(alpha: 0.88),
-                AppColors.color131A29.withValues(alpha: 0.9),
-              ],
-            ),
-          ),
-          child: SizedBox(
-            height: compact ? 11 : 13,
-            child: Stack(
-              children: <Widget>[
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOut,
-                  width: width,
-                  decoration: BoxDecoration(
-                    borderRadius: 999.borderRadiusAll,
-                    gradient: LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: <Color>[
-                        AppColors.color0095FF,
-                        AppColors.colorF59AEF9,
-                      ],
-                    ),
-                    boxShadow: <BoxShadow>[
-                      BoxShadow(
-                        color: AppColors.color1A0095FF.withValues(alpha: 0.8),
-                        blurRadius: 12,
-                        spreadRadius: 0.2,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
 class _GoalCountInlineContent extends StatelessWidget {
   const _GoalCountInlineContent({required this.targets, required this.compact});
 
@@ -460,19 +349,35 @@ class _GoalCountInlineContent extends StatelessWidget {
       );
     }
 
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: compact ? 6 : 8,
-      runSpacing: compact ? 3 : 4,
-      children: targets
-          .map(
-            (target) => _GoalTargetChip(
-              value: target.value,
-              remaining: target.remaining,
-              compact: compact,
+    final spacing = compact ? 6.0 : 8.0;
+    final chips = targets
+        .map(
+          (target) => _GoalTargetChip(
+            value: target.value,
+            remaining: target.remaining,
+            compact: compact,
+          ),
+        )
+        .toList(growable: false);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                for (var index = 0; index < chips.length; index++) ...<Widget>[
+                  if (index > 0) SizedBox(width: spacing),
+                  chips[index],
+                ],
+              ],
             ),
-          )
-          .toList(growable: false),
+          ),
+        );
+      },
     );
   }
 }
@@ -735,18 +640,22 @@ class _GoalMiniBall extends StatelessWidget {
 
 class _CornerStatBadge extends StatelessWidget {
   const _CornerStatBadge({
-    required this.icon,
+    this.icon,
+    this.iconAssetPath,
     required this.iconColor,
     required this.value,
     required this.compact,
     required this.onTap,
-  });
+    this.showPlus = false,
+  }) : assert(icon != null || iconAssetPath != null);
 
-  final IconData icon;
+  final IconData? icon;
+  final String? iconAssetPath;
   final Color iconColor;
   final String value;
   final bool compact;
   final VoidCallback? onTap;
+  final bool showPlus;
 
   @override
   Widget build(BuildContext context) {
@@ -760,9 +669,6 @@ class _CornerStatBadge extends StatelessWidget {
             AppColors.color1C274C.withValues(alpha: 0.9),
             AppColors.color131A29.withValues(alpha: 0.93),
           ],
-        ),
-        border: Border.all(
-          color: AppColors.colorF59AEF9.withValues(alpha: 0.74),
         ),
         boxShadow: <BoxShadow>[
           BoxShadow(
@@ -799,7 +705,14 @@ class _CornerStatBadge extends StatelessWidget {
               ),
               child: Padding(
                 padding: (compact ? 4 : 5).paddingAll,
-                child: Icon(icon, color: iconColor, size: compact ? 16 : 18),
+                child: iconAssetPath != null
+                    ? Image.asset(
+                        iconAssetPath!,
+                        width: compact ? 16 : 18,
+                        height: compact ? 16 : 18,
+                        fit: BoxFit.contain,
+                      )
+                    : Icon(icon, color: iconColor, size: compact ? 16 : 18),
               ),
             ),
             (compact ? 6 : 8).width,
@@ -815,6 +728,22 @@ class _CornerStatBadge extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                     ),
             ),
+            if (showPlus) ...<Widget>[
+              (compact ? 6 : 8).width,
+              Container(
+                width: compact ? 16 : 18,
+                height: compact ? 16 : 18,
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.add_rounded,
+                  color: AppColors.white,
+                  size: compact ? 11 : 12,
+                ),
+              ),
+            ],
           ],
         ),
       ),

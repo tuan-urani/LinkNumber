@@ -218,8 +218,8 @@ class _GoalCountContent extends StatelessWidget {
       children: <Widget>[
         Wrap(
           alignment: WrapAlignment.center,
-          spacing: 8,
-          runSpacing: 8,
+          spacing: 0,
+          runSpacing: 0,
           children: goals
               .map((goal) => _GoalBall(value: goal.value, small: true))
               .toList(growable: false),

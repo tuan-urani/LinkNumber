@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 
 import 'package:flow_connection/src/extensions/int_extensions.dart';
 import 'package:flow_connection/src/locale/locale_key.dart';
+import 'package:flow_connection/src/ui/link_number/components/link_number_result_overlay.dart';
 import 'package:flow_connection/src/ui/link_number/interactor/link_number_gif_preloader.dart';
 import 'package:flow_connection/src/ui/link_number/interactor/link_number_merge_timing.dart';
 import 'package:flow_connection/src/ui/link_number/interactor/link_number_snapshot.dart';
@@ -78,6 +79,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
   static const Duration _breakAxeTravelDuration = Duration(milliseconds: 190);
   static const Duration _breakAxeImpactDuration = Duration(milliseconds: 290);
   static const Duration _breakCommitDelay = Duration(milliseconds: 110);
+  static const Duration _swapTravelDuration = Duration(milliseconds: 260);
 
   static const Duration _pathFlowDuration = Duration(milliseconds: 1300);
   static const Duration _mergeBurstDuration = Duration(milliseconds: 760);
@@ -99,6 +101,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
   late final AnimationController _dropCascadeController;
   late final AnimationController _cellPopController;
   late final AnimationController _skillFxController;
+  late final AnimationController _swapFxController;
 
   Set<LinkNumberCell> _poppingCells = <LinkNumberCell>{};
   LinkNumberCell? _mergeCenterCell;
@@ -122,6 +125,11 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
   LinkNumberCell? _breakSkillTargetCell;
   int? _breakSkillTargetValue;
   Offset _breakSkillTravelStart = Offset.zero;
+  int _swapFxSequence = 0;
+  LinkNumberCell? _swapFirstCell;
+  LinkNumberCell? _swapSecondCell;
+  int? _swapFirstValue;
+  int? _swapSecondValue;
 
   @override
   void initState() {
@@ -160,6 +168,10 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
       vsync: this,
       duration: _breakAxeTravelDuration,
     );
+    _swapFxController = AnimationController(
+      vsync: this,
+      duration: _swapTravelDuration,
+    );
 
     _syncPathFlowAnimation(widget.snapshot);
   }
@@ -180,6 +192,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     _tilePopSequence++;
     _dropSequence++;
     _skillFxSequence++;
+    _swapFxSequence++;
     _pathFlowController.dispose();
     _releasePathLineController.dispose();
     _pathResolveController.dispose();
@@ -187,6 +200,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     _dropCascadeController.dispose();
     _cellPopController.dispose();
     _skillFxController.dispose();
+    _swapFxController.dispose();
     super.dispose();
   }
 
@@ -376,6 +390,62 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     });
   }
 
+  void _clearSwapFxVisualState({bool unlockInput = true}) {
+    _swapFxController.stop();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _swapFirstCell = null;
+      _swapSecondCell = null;
+      _swapFirstValue = null;
+      _swapSecondValue = null;
+      if (unlockInput) {
+        _isSkillInputLocked = false;
+      }
+    });
+  }
+
+  void _runSwapSkillExecute({
+    required Offset localPosition,
+    required Size boardSize,
+    required LinkNumberCell firstCell,
+    required LinkNumberCell secondCell,
+    required int secondValue,
+  }) {
+    if (widget.snapshot.selectedSkill != LinkNumberSkillType.swapTiles) {
+      return;
+    }
+    final firstValue = _boardValueAt(widget.snapshot.board, firstCell);
+    if (firstValue <= 0 || secondValue <= 0) {
+      widget.onCellTap(localPosition, boardSize);
+      return;
+    }
+
+    final sequence = ++_swapFxSequence;
+    setState(() {
+      _isSkillInputLocked = true;
+      _swapFirstCell = firstCell;
+      _swapSecondCell = secondCell;
+      _swapFirstValue = firstValue;
+      _swapSecondValue = secondValue;
+    });
+    _swapFxController.stop();
+    _swapFxController.forward(from: 0);
+
+    Future<void>.delayed(_swapTravelDuration, () {
+      if (!mounted || sequence != _swapFxSequence) {
+        return;
+      }
+      if (widget.snapshot.selectedSkill != LinkNumberSkillType.swapTiles) {
+        _clearSwapFxVisualState();
+        return;
+      }
+      widget.onCellTap(localPosition, boardSize);
+      _clearSwapFxVisualState();
+    });
+  }
+
   void _handleBoardTapDown(
     Offset localPosition,
     Size boardSize, {
@@ -427,6 +497,16 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
       }
       final pendingSwapCell = snapshot.pendingSwapCell;
       if (pendingSwapCell != null && pendingSwapCell == tappedCell) {
+        return;
+      }
+      if (pendingSwapCell != null) {
+        _runSwapSkillExecute(
+          localPosition: localPosition,
+          boardSize: boardSize,
+          firstCell: pendingSwapCell,
+          secondCell: tappedCell,
+          secondValue: tappedValue,
+        );
         return;
       }
     }
@@ -691,6 +771,8 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
       _releasePathLineController.stop();
       _skillFxSequence += 1;
       _skillFxController.stop();
+      _swapFxSequence += 1;
+      _swapFxController.stop();
       setState(() {
         _mergeCenterCell = null;
         _mergeScoreGain = 0;
@@ -707,6 +789,10 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
         _skillFxKind = _SkillFxKind.none;
         _breakSkillTargetCell = null;
         _breakSkillTargetValue = null;
+        _swapFirstCell = null;
+        _swapSecondCell = null;
+        _swapFirstValue = null;
+        _swapSecondValue = null;
       });
       _isBurstPrimedByRelease = false;
     }
@@ -1074,6 +1160,12 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
   }) {
     var scale = 1.0;
     final isAnimatedBall = AppAssets.supportsLinkNumberAnimatedBall(value);
+    final isDestroyingAnimatedBall = isAnimatedBall && destroyProgress > 0;
+
+    // Keep animated GIF balls consistently zoomed by interaction state.
+    if (isAnimatedBall && !isDestroyingAnimatedBall) {
+      scale = selected ? 1.1 : 1.15;
+    }
 
     if (selected && !isAnimatedBall) {
       scale += 0.09 + (0.06 * chainPulse);
@@ -1402,6 +1494,93 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     );
   }
 
+  Widget _buildSwapSkillExecuteOverlay({
+    required Size boardSize,
+    required int rows,
+    required int columns,
+  }) {
+    final firstCell = _swapFirstCell;
+    final secondCell = _swapSecondCell;
+    final firstValue = _swapFirstValue;
+    final secondValue = _swapSecondValue;
+    if (firstCell == null ||
+        secondCell == null ||
+        firstValue == null ||
+        secondValue == null) {
+      return const SizedBox.shrink();
+    }
+
+    final firstCenter = _cellCenter(
+      cell: firstCell,
+      boardSize: boardSize,
+      rows: rows,
+      columns: columns,
+    );
+    final secondCenter = _cellCenter(
+      cell: secondCell,
+      boardSize: boardSize,
+      rows: rows,
+      columns: columns,
+    );
+    final cellWidth = boardSize.width / columns;
+    final cellHeight = boardSize.height / rows;
+
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _swapFxController,
+          builder: (_, child) {
+            final progress = Curves.easeInOutCubic.transform(
+              _swapFxController.value,
+            );
+            final firstCurrent = Offset.lerp(firstCenter, secondCenter, progress);
+            final secondCurrent = Offset.lerp(secondCenter, firstCenter, progress);
+            if (firstCurrent == null || secondCurrent == null) {
+              return const SizedBox.shrink();
+            }
+
+            return Stack(
+              children: <Widget>[
+                Positioned(
+                  left: firstCurrent.dx - (cellWidth / 2),
+                  top: firstCurrent.dy - (cellHeight / 2),
+                  width: cellWidth,
+                  height: cellHeight,
+                  child: _CellTile(
+                    value: firstValue,
+                    selected: true,
+                    isSwapAnchor: true,
+                    isPopping: false,
+                    chainPulse: 0,
+                    destroyProgress: 0,
+                    scale: 1.1,
+                    showCellBorder: false,
+                  ),
+                ),
+                Positioned(
+                  left: secondCurrent.dx - (cellWidth / 2),
+                  top: secondCurrent.dy - (cellHeight / 2),
+                  width: cellWidth,
+                  height: cellHeight,
+                  child: _CellTile(
+                    value: secondValue,
+                    selected: true,
+                    isSwapAnchor: true,
+                    isPopping: false,
+                    chainPulse: 0,
+                    destroyProgress: 0,
+                    scale: 1.1,
+                    showCellBorder: false,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _buildChainBurstOverlay({
     required Size boardSize,
     required int rows,
@@ -1626,23 +1805,52 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
       height: boardHeight,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: AppColors.color131A29.withValues(alpha: 0.82),
-          borderRadius: 14.borderRadiusAll,
-          border: Border.all(color: AppColors.colorF586AA6, width: 4),
+          borderRadius: 18.borderRadiusAll,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[
+              AppColors.color1C274C.withValues(alpha: 0.58),
+              AppColors.color131A29.withValues(alpha: 0.9),
+            ],
+          ),
+          border: Border.all(
+            color: AppColors.colorFBFC9DE.withValues(alpha: 0.42),
+            width: 1.2,
+          ),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: AppColors.color1A2D7DD2.withValues(alpha: 0.9),
+              blurRadius: 22,
+              spreadRadius: 0.25,
+            ),
+            BoxShadow(
+              color: AppColors.black.withValues(alpha: 0.36),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
+          ],
         ),
         child: Padding(
-          padding: 8.paddingAll,
+          padding: 6.paddingAll,
           child: ClipRRect(
-            borderRadius: 10.borderRadiusAll,
+            borderRadius: 14.borderRadiusAll,
             child: Stack(
               fit: StackFit.expand,
               children: <Widget>[
                 DecoratedBox(
                   decoration: BoxDecoration(
-                    color: AppColors.color131A29.withValues(alpha: 0.72),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        AppColors.color1C274C.withValues(alpha: 0.48),
+                        AppColors.color131A29.withValues(alpha: 0.78),
+                      ],
+                    ),
                     border: Border.all(
-                      color: AppColors.colorF586AA6.withValues(alpha: 0.6),
-                      width: 2,
+                      color: AppColors.colorFBFC9DE.withValues(alpha: 0.28),
+                      width: 1,
                     ),
                   ),
                 ),
@@ -1716,14 +1924,36 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
           height: boardHeight,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: AppColors.color131A29.withValues(alpha: 0.82),
-              borderRadius: 14.borderRadiusAll,
-              border: Border.all(color: AppColors.colorF586AA6, width: 4),
+              borderRadius: 18.borderRadiusAll,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  AppColors.color1C274C.withValues(alpha: 0.58),
+                  AppColors.color131A29.withValues(alpha: 0.9),
+                ],
+              ),
+              border: Border.all(
+                color: AppColors.colorFBFC9DE.withValues(alpha: 0.42),
+                width: 1.2,
+              ),
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: AppColors.color1A2D7DD2.withValues(alpha: 0.9),
+                  blurRadius: 22,
+                  spreadRadius: 0.25,
+                ),
+                BoxShadow(
+                  color: AppColors.black.withValues(alpha: 0.36),
+                  blurRadius: 12,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
             child: Padding(
-              padding: 8.paddingAll,
+              padding: 6.paddingAll,
               child: ClipRRect(
-                borderRadius: 10.borderRadiusAll,
+                borderRadius: 14.borderRadiusAll,
                 child: LayoutBuilder(
                   builder: (_, boardConstraints) {
                     final boardSize = Size(
@@ -1760,14 +1990,19 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
                         children: <Widget>[
                           DecoratedBox(
                             decoration: BoxDecoration(
-                              color: AppColors.color131A29.withValues(
-                                alpha: 0.72,
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: <Color>[
+                                  AppColors.color1C274C.withValues(alpha: 0.5),
+                                  AppColors.color131A29.withValues(alpha: 0.82),
+                                ],
                               ),
                               border: Border.all(
-                                color: AppColors.colorF586AA6.withValues(
-                                  alpha: 0.6,
+                                color: AppColors.colorFBFC9DE.withValues(
+                                  alpha: 0.3,
                                 ),
-                                width: 2,
+                                width: 1,
                               ),
                             ),
                             child: Stack(
@@ -1828,6 +2063,9 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
                                                     .indexOf(cell);
                                                 final isInVisualPath =
                                                     pathIndex >= 0;
+                                                final isTileSelected =
+                                                    isInVisualPath ||
+                                                    isSwapAnchor;
                                                 final chainPulse =
                                                     snapshot
                                                                 .activePath
@@ -1839,12 +2077,17 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
                                                 final hiddenByDrop =
                                                     _pendingMergeChangedCells
                                                         .contains(cell);
+                                                final hiddenBySwap =
+                                                    (_swapFirstCell != null &&
+                                                        _swapFirstCell == cell) ||
+                                                    (_swapSecondCell != null &&
+                                                        _swapSecondCell == cell);
                                                 final tileValue =
                                                     snapshot.board[row][column];
                                                 return Expanded(
                                                   child: _CellTile(
                                                     value: tileValue,
-                                                    selected: isInVisualPath,
+                                                    selected: isTileSelected,
                                                     isSwapAnchor: isSwapAnchor,
                                                     isPopping: _poppingCells
                                                         .contains(cell),
@@ -1854,7 +2097,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
                                                     scale: _tileScale(
                                                       cell: cell,
                                                       value: tileValue,
-                                                      selected: isInVisualPath,
+                                                      selected: isTileSelected,
                                                       isSwapAnchor:
                                                           isSwapAnchor,
                                                       destroyProgress:
@@ -1865,7 +2108,9 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
                                                         ValueKey<String>(
                                                           'destroy_${_pathResolveSequence}_${row}_$column',
                                                         ),
-                                                    hidden: hiddenByDrop,
+                                                    hidden:
+                                                        hiddenByDrop ||
+                                                        hiddenBySwap,
                                                     showCellBorder: false,
                                                   ),
                                                 );
@@ -1890,6 +2135,11 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
                             rows: rows,
                             columns: columns,
                           ),
+                          _buildSwapSkillExecuteOverlay(
+                            boardSize: boardSize,
+                            rows: rows,
+                            columns: columns,
+                          ),
                           _buildMergeFloatingScore(
                             boardSize: boardSize,
                             rows: rows,
@@ -1904,7 +2154,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
                               columns: columns,
                             ),
                           if (snapshot.isGameOver)
-                            _ResultOverlay(
+                            LinkNumberResultOverlay(
                               hasWon: snapshot.hasWon,
                               onRetry: widget.onRetry,
                               onNextLevel: widget.onNextLevel,
@@ -1981,7 +2231,7 @@ class _CellTile extends StatelessWidget {
     final animatedBallAssetPath = supportsAnimatedBall
         ? (isDestroyingAnimatedBall
               ? AppAssets.linkNumberBallDestroyingOutGif(value)
-              : selected
+              : selected && !isSwapAnchor
               ? AppAssets.linkNumberBallSelectedPathLoopGif(value)
               : AppAssets.linkNumberBallIdleLoopGif(value))
         : null;
@@ -2134,14 +2384,10 @@ class _CellTile extends StatelessWidget {
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: isSwapAnchor
-                                          ? AppColors.colorFFE53E
-                                          : selected
+                                      color: selected
                                           ? AppColors.white
                                           : AppColors.transparent,
-                                      width: isSwapAnchor
-                                          ? 3
-                                          : selected
+                                      width: selected
                                           ? (1.8 + (1.4 * dynamicGlow))
                                           : 2,
                                     ),
@@ -2169,18 +2415,6 @@ class _CellTile extends StatelessWidget {
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (supportsAnimatedBall && isSwapAnchor)
-                      Positioned.fill(
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppColors.colorFFE53E,
-                              width: 3,
                             ),
                           ),
                         ),
@@ -2354,86 +2588,5 @@ class _BoardGridPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _BoardGridPainter oldDelegate) {
     return oldDelegate.rows != rows || oldDelegate.columns != columns;
-  }
-}
-
-class _ResultOverlay extends StatelessWidget {
-  const _ResultOverlay({
-    required this.hasWon,
-    required this.onRetry,
-    required this.onNextLevel,
-  });
-
-  final bool hasWon;
-  final VoidCallback onRetry;
-  final VoidCallback onNextLevel;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: AppColors.backgroundOverlay,
-      child: Center(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: 14.borderRadiusAll,
-          ),
-          child: Padding(
-            padding: 16.paddingAll,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Text(
-                  hasWon
-                      ? LocaleKey.linkNumberWinTitle.tr
-                      : LocaleKey.linkNumberLoseTitle.tr,
-                  style: AppStyles.h4(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.color1D2410,
-                  ),
-                ),
-                8.height,
-                Text(
-                  hasWon
-                      ? LocaleKey.linkNumberWinBody.tr
-                      : LocaleKey.linkNumberLoseBody.tr,
-                  textAlign: TextAlign.center,
-                  style: AppStyles.bodyMedium(color: AppColors.color667394),
-                ),
-                14.height,
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    TextButton(
-                      onPressed: onRetry,
-                      child: Text(
-                        LocaleKey.linkNumberRetryLevel.tr,
-                        style: AppStyles.bodyMedium(
-                          color: AppColors.color2D7DD2,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    if (hasWon) ...<Widget>[
-                      8.width,
-                      TextButton(
-                        onPressed: onNextLevel,
-                        child: Text(
-                          LocaleKey.linkNumberNextLevel.tr,
-                          style: AppStyles.bodyMedium(
-                            color: AppColors.color2D7DD2,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }

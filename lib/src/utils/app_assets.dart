@@ -1,6 +1,10 @@
 class AppAssets {
   AppAssets._();
 
+  static const String gameMenuCoinPng = 'assets/coin.png';
+  static const String gameMenuCurrentLevelPng = 'assets/current_level.png';
+  static const String splashMainSloganPng = 'assets/main_slogan.png';
+
   static const String iconsInputRequiredSvg =
       'assets/images/icons/input_required.svg';
   static const String iconsChevronDownSvg =

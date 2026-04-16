@@ -597,6 +597,7 @@ class LinkNumberEngine {
     if (first != second) {
       board[pendingCell.row][pendingCell.column] = second;
       board[cell.row][cell.column] = first;
+      _coins = math.max(0, _coins - _snapshot.breakTileCost);
       _swapCharges = math.max(0, _swapCharges - 1);
     }
 
@@ -606,6 +607,7 @@ class LinkNumberEngine {
 
     _snapshot = _snapshot.copyWith(
       board: board,
+      coins: _coins,
       swapCharges: _swapCharges,
       selectedSkill: null,
       pendingSwapCell: null,
@@ -613,6 +615,7 @@ class LinkNumberEngine {
       activeValue: null,
     );
 
+    unawaited(_persistProgress());
     return _snapshot;
   }
 

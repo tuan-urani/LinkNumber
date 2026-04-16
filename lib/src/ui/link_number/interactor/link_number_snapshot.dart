@@ -147,7 +147,8 @@ class LinkNumberSnapshot {
 
   bool get canUseBreakTile => !isGameOver && coins >= breakTileCost;
 
-  bool get canUseSwapTile => !isGameOver && swapCharges > 0;
+  bool get canUseSwapTile =>
+      !isGameOver && swapCharges > 0 && coins >= breakTileCost;
 
   LinkNumberSnapshot copyWith({
     List<List<int>>? board,

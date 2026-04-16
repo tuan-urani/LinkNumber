@@ -52,4 +52,38 @@ class LocaleKey {
   static const String gameMenuReward = 'game_menu_reward';
   static const String gameMenuLevel = 'game_menu_level';
   static const String gameMenuStars = 'game_menu_stars';
+  static const String gameMenuPreviewAssets = 'game_menu_preview_assets';
+  static const String gameMenuTestWinModal = 'game_menu_test_win_modal';
+  static const String gameMenuTestLoseModal = 'game_menu_test_lose_modal';
+  static const String linkNumberAssetPreviewTitle =
+      'link_number_asset_preview_title';
+  static const String linkNumberAssetPreviewSubtitle =
+      'link_number_asset_preview_subtitle';
+  static const String linkNumberAssetPreviewStaticSection =
+      'link_number_asset_preview_static_section';
+  static const String linkNumberAssetPreviewAnimatedSection =
+      'link_number_asset_preview_animated_section';
+  static const String linkNumberAssetPreviewBall =
+      'link_number_asset_preview_ball';
+  static const String linkNumberAssetPreviewIdle =
+      'link_number_asset_preview_idle';
+  static const String linkNumberAssetPreviewSelected =
+      'link_number_asset_preview_selected';
+  static const String linkNumberAssetPreviewDestroying =
+      'link_number_asset_preview_destroying';
+  static const String linkNumberAssetPreviewMissing =
+      'link_number_asset_preview_missing';
+  static const String linkNumberAssetPreviewOk = 'link_number_asset_preview_ok';
+  static const String linkNumberAssetPreviewNoAssets =
+      'link_number_asset_preview_no_assets';
+  static const String linkNumberAssetPreviewStaticBase =
+      'link_number_asset_preview_static_base';
+  static const String linkNumberAssetPreviewStaticHighlight =
+      'link_number_asset_preview_static_highlight';
+  static const String linkNumberAssetPreviewStaticShadow =
+      'link_number_asset_preview_static_shadow';
+  static const String linkNumberAssetPreviewBoardBackgroundSection =
+      'link_number_asset_preview_board_background_section';
+  static const String linkNumberAssetPreviewBoardBackgroundHint =
+      'link_number_asset_preview_board_background_hint';
 }
