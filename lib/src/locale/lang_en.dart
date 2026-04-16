@@ -44,4 +44,12 @@ final Map<String, String> enUs = <String, String>{
   LocaleKey.linkNumberRetryLevel: 'Retry',
   LocaleKey.linkNumberNextLevel: 'Next',
   LocaleKey.linkNumberPlayAgain: 'Play Again',
+  LocaleKey.splashLoading: 'LOADING...',
+  LocaleKey.gameMenuHighestBlock: 'YOUR HIGHEST BLOCK',
+  LocaleKey.gameMenuDaily: 'DAILY',
+  LocaleKey.gameMenuWheel: 'WHEEL',
+  LocaleKey.gameMenuPlay: 'PLAY',
+  LocaleKey.gameMenuReward: '+20',
+  LocaleKey.gameMenuLevel: 'Level',
+  LocaleKey.gameMenuStars: 'Stars',
 };

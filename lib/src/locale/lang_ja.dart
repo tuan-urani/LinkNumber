@@ -41,4 +41,12 @@ final Map<String, String> jaJp = <String, String>{
   LocaleKey.linkNumberRetryLevel: 'リトライ',
   LocaleKey.linkNumberNextLevel: '次へ',
   LocaleKey.linkNumberPlayAgain: 'もう一度',
+  LocaleKey.splashLoading: 'ロード中...',
+  LocaleKey.gameMenuHighestBlock: 'あなたの最高ブロック',
+  LocaleKey.gameMenuDaily: 'デイリー',
+  LocaleKey.gameMenuWheel: 'ルーレット',
+  LocaleKey.gameMenuPlay: 'プレイ',
+  LocaleKey.gameMenuReward: '+20',
+  LocaleKey.gameMenuLevel: 'レベル',
+  LocaleKey.gameMenuStars: 'スター',
 };

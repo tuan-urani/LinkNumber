@@ -22,8 +22,20 @@ class AppAssets {
       'assets/game/effects/explosion/merge_burst_sheet_01.png';
   static const String linkNumberPathGlowPng =
       'assets/game/effects/path_glow.png';
-  static const String linkNumberSkillBreakAxePng =
-      'assets/game/skills/link_number_skill_break_axe.png';
+  static const String linkNumberSkillBreakIdleLoopGif =
+      'assets/game/skills/link_number_skill_break_idle_loop.gif';
+  static const String linkNumberSkillBreakSelectedLoopGif =
+      'assets/game/skills/link_number_skill_break_selected_loop.gif';
+  static const String linkNumberSkillBreakExecutingGif =
+      'assets/game/skills/link_number_skill_break_executing.gif';
+  static const String linkNumberSkillBreakTravelLoopGif =
+      'assets/game/skills/link_number_skill_break_travel_loop.gif';
+  static const String linkNumberSkillSwapIdleLoopGif =
+      'assets/game/skills/link_number_skill_swap_idle_loop.gif';
+  static const String linkNumberSkillSwapSelectedLoopGif =
+      'assets/game/skills/link_number_skill_swap_selected_loop.gif';
+  static const String linkNumberSkillSwapExecutingGif =
+      'assets/game/skills/link_number_skill_swap_executing.gif';
 
   static const List<int> linkNumberAnimatedBallValues = <int>[
     2,
@@ -32,6 +44,11 @@ class AppAssets {
     16,
     32,
     64,
+    128,
+    256,
+    512,
+    1024,
+    2048,
   ];
 
   static final Set<int> _linkNumberAnimatedBallValueSet =

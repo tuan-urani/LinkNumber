@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gif/gif.dart';
 
 import 'package:flow_connection/src/extensions/int_extensions.dart';
 import 'package:flow_connection/src/ui/link_number/interactor/link_number_snapshot.dart';
@@ -39,12 +40,15 @@ class LinkNumberSkillPanel extends StatelessWidget {
             Expanded(
               child: _SkillInlineButton(
                 icon: Icons.auto_fix_high_rounded,
-                iconAssetPath: AppAssets.linkNumberSkillBreakAxePng,
+                idleGifAssetPath: AppAssets.linkNumberSkillBreakIdleLoopGif,
+                selectedGifAssetPath:
+                    AppAssets.linkNumberSkillBreakSelectedLoopGif,
                 trailingLabel: '${snapshot.breakTileCost}',
                 selected:
                     snapshot.selectedSkill == LinkNumberSkillType.breakTile,
                 enabled: snapshot.canUseBreakTile,
                 compact: compact,
+                badgeTopOffset: compact ? -8 : -10,
                 onTap: onToggleBreakTile,
               ),
             ),
@@ -52,11 +56,19 @@ class LinkNumberSkillPanel extends StatelessWidget {
             Expanded(
               child: _SkillInlineButton(
                 icon: Icons.swap_horiz_rounded,
+                idleGifAssetPath: AppAssets.linkNumberSkillSwapIdleLoopGif,
+                selectedGifAssetPath:
+                    AppAssets.linkNumberSkillSwapSelectedLoopGif,
+                idleAutostart: Autostart.once,
                 trailingLabel: '${snapshot.swapCharges}',
                 selected:
                     snapshot.selectedSkill == LinkNumberSkillType.swapTiles,
                 enabled: snapshot.canUseSwapTile,
                 compact: compact,
+                enlargeOnSelected: true,
+                iconSizeMultiplier: 2.0,
+                badgeTopOffset: compact ? 8 : 10,
+                badgeRightOffset: compact ? 14 : 16,
                 onTap: onToggleSwapTiles,
               ),
             ),
@@ -75,15 +87,29 @@ class _SkillInlineButton extends StatelessWidget {
     required this.enabled,
     required this.compact,
     required this.onTap,
-    this.iconAssetPath,
+    this.enlargeOnSelected = false,
+    this.iconSizeMultiplier = 1.0,
+    this.idleAutostart = Autostart.loop,
+    this.labelBelowGif = false,
+    this.badgeTopOffset = 0,
+    this.badgeRightOffset = 0,
+    this.idleGifAssetPath,
+    this.selectedGifAssetPath,
   });
 
   final IconData icon;
-  final String? iconAssetPath;
+  final String? idleGifAssetPath;
+  final String? selectedGifAssetPath;
   final String trailingLabel;
   final bool selected;
   final bool enabled;
   final bool compact;
+  final bool enlargeOnSelected;
+  final double iconSizeMultiplier;
+  final Autostart idleAutostart;
+  final bool labelBelowGif;
+  final double badgeTopOffset;
+  final double badgeRightOffset;
   final VoidCallback onTap;
 
   @override
@@ -92,10 +118,21 @@ class _SkillInlineButton extends StatelessWidget {
         ? AppColors.colorFFE53E
         : AppColors.colorF586AA6.withValues(alpha: 0.65);
     final opacity = enabled ? 1.0 : 0.45;
-    final iconSize = iconAssetPath != null
-        ? (compact ? 36.0 : 42.0)
-        : (compact ? 30.0 : 34.0);
-    final iconBadgeBoxWidth = compact ? 62.0 : 70.0;
+    final baseIconSize = compact ? 42.0 : 48.0;
+    final scaledBaseSize = baseIconSize * iconSizeMultiplier;
+    final iconSize = enlargeOnSelected && selected
+        ? scaledBaseSize * 1.12
+        : scaledBaseSize;
+    final iconBadgeBoxWidth = (compact ? 70.0 : 80.0) +
+        ((iconSizeMultiplier - 1.0).clamp(0.0, 2.0) * 42.0);
+    final iconBadgeBoxHeight = (compact ? 42.0 : 46.0) +
+        ((iconSizeMultiplier - 1.0).clamp(0.0, 2.0) * 34.0);
+    final buttonHeight = (compact ? 46.0 : 50.0) +
+        ((iconSizeMultiplier - 1.0).clamp(0.0, 2.0) * 36.0);
+    final gifAssetPath = selected && selectedGifAssetPath != null
+        ? selectedGifAssetPath
+        : idleGifAssetPath;
+    final gifAutostart = selected ? Autostart.loop : idleAutostart;
 
     return InkWell(
       borderRadius: 12.borderRadiusAll,
@@ -109,47 +146,79 @@ class _SkillInlineButton extends StatelessWidget {
         child: Opacity(
           opacity: opacity,
           child: SizedBox(
-            height: compact ? 44 : 48,
+            height: buttonHeight,
             child: Center(
               child: SizedBox(
                 width: iconBadgeBoxWidth,
-                height: compact ? 40 : 44,
+                height: iconBadgeBoxHeight,
                 child: Stack(
                   clipBehavior: Clip.none,
                   alignment: Alignment.center,
                   children: <Widget>[
-                    if (iconAssetPath != null)
-                      Image.asset(
-                        iconAssetPath!,
+                    if (gifAssetPath != null)
+                      Gif(
+                        key: ValueKey<String>(gifAssetPath),
+                        image: AssetImage(gifAssetPath),
+                        autostart: gifAutostart,
+                        useCache: true,
                         width: iconSize,
                         height: iconSize,
                         fit: BoxFit.contain,
+                        placeholder: (_) => const SizedBox.shrink(),
                       )
                     else
                       Icon(icon, color: AppColors.white, size: iconSize),
-                    Positioned(
-                      right: compact ? -2 : -4,
-                      top: compact ? -1 : 0,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: AppColors.color88CF66.withValues(alpha: 0.92),
-                          borderRadius: 16.borderRadiusAll,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 1.5,
+                    if (labelBelowGif)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: compact ? -8 : -9,
+                        child: Center(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: AppColors.color88CF66.withValues(alpha: 0.92),
+                              borderRadius: 16.borderRadiusAll,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 1.5,
+                              ),
+                              child: Text(
+                                trailingLabel,
+                                style: AppStyles.bodySmall(
+                                  color: AppColors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
                           ),
-                          child: Text(
-                            trailingLabel,
-                            style: AppStyles.bodySmall(
-                              color: AppColors.white,
-                              fontWeight: FontWeight.w700,
+                        ),
+                      )
+                    else
+                      Positioned(
+                        right: (compact ? -2 : -4) + badgeRightOffset,
+                        top: (compact ? -1 : 0) + badgeTopOffset,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: AppColors.color88CF66.withValues(alpha: 0.92),
+                            borderRadius: 16.borderRadiusAll,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 1.5,
+                            ),
+                            child: Text(
+                              trailingLabel,
+                              style: AppStyles.bodySmall(
+                                color: AppColors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),

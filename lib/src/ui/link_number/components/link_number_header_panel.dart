@@ -16,13 +16,52 @@ Color _linkNumberColorForValue(int value) {
     8 => AppColors.colorEF4056,
     16 => AppColors.color9C27B0,
     32 => AppColors.color88CF66,
-    64 => AppColors.colorF39702,
+    64 => AppColors.colorD97706,
+    128 => AppColors.color14B8A6,
+    256 => AppColors.color06B6D4,
+    512 => AppColors.color3B82F6,
+    1024 => AppColors.colorF97316,
+    2048 => AppColors.color111827,
     _ => AppColors.color1D2410,
   };
 }
 
+double _goalCountProgress(List<LinkNumberGoalTarget> targets) {
+  if (targets.isEmpty) {
+    return 0;
+  }
+
+  final totalRequired = targets.fold<int>(
+    0,
+    (sum, target) => sum + target.required,
+  );
+  if (totalRequired <= 0) {
+    return 1;
+  }
+
+  var totalRemaining = 0;
+  for (final target in targets) {
+    final boundedRemaining = target.remaining < 0
+        ? 0
+        : (target.remaining > target.required
+              ? target.required
+              : target.remaining);
+    totalRemaining += boundedRemaining;
+  }
+
+  final completed = (totalRequired - totalRemaining).clamp(0, totalRequired);
+  return completed.toDouble() / totalRequired;
+}
+
+double _goalScoreProgress(LinkNumberSnapshot snapshot) {
+  if (snapshot.scoreTarget <= 0) {
+    return 1;
+  }
+  return (snapshot.score / snapshot.scoreTarget).clamp(0, 1).toDouble();
+}
+
 /// LinkNumberHeaderPanel renders top HUD:
-/// row 1 => Coins + Stars at the right edge.
+/// row 1 => Coins + Stars.
 /// row 2 => Goal + Moves/Current stats.
 class LinkNumberHeaderPanel extends StatelessWidget {
   const LinkNumberHeaderPanel({
@@ -38,49 +77,70 @@ class LinkNumberHeaderPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statGap = compact ? 6 : 8;
-    final rightStatGap = compact ? 6.0 : 8.0;
+    final cardGap = compact ? 8 : 10;
+    final rightStatGap = compact ? 8.0 : 10.0;
     final statGridHeight = snapshot.isGoalCountMode
-        ? (compact ? 126.0 : 140.0)
-        : (compact ? 114.0 : 126.0);
+        ? (compact ? 164.0 : 184.0)
+        : (compact ? 146.0 : 164.0);
     final currentValue = snapshot.currentChainPreviewValue;
+    final isCurrentEmpty = currentValue == null;
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.black.withValues(alpha: 0.24),
-        borderRadius: 14.borderRadiusAll,
-        border: Border.all(
-          color: AppColors.colorF586AA6.withValues(alpha: 0.6),
+        borderRadius: 16.borderRadiusAll,
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[
+            AppColors.color1C274C.withValues(alpha: 0.86),
+            AppColors.color131A29.withValues(alpha: 0.9),
+          ],
         ),
+        border: Border.all(
+          color: AppColors.colorF59AEF9.withValues(alpha: 0.74),
+          width: 1.1,
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: AppColors.color1A0095FF.withValues(alpha: 0.58),
+            blurRadius: 22,
+            spreadRadius: 0.3,
+          ),
+          BoxShadow(
+            color: AppColors.black.withValues(alpha: 0.28),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Padding(
         padding: (compact ? 10 : 12).paddingAll,
         child: Column(
           children: <Widget>[
-            Align(
-              alignment: Alignment.centerRight,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  _CornerStatBadge(
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: _CornerStatBadge(
                     icon: Icons.monetization_on_rounded,
                     value: '${snapshot.coins}',
                     iconColor: AppColors.colorF39702,
                     compact: compact,
                     onTap: onClaimReward,
                   ),
-                  (compact ? 6 : 8).width,
-                  _CornerStatBadge(
+                ),
+                cardGap.width,
+                Expanded(
+                  child: _CornerStatBadge(
                     icon: Icons.star_rounded,
                     value: '${snapshot.stars}',
                     iconColor: AppColors.colorFFE53E,
                     compact: compact,
                     onTap: null,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            (compact ? 6 : 8).height,
+            cardGap.height,
             SizedBox(
               height: statGridHeight,
               child: Row(
@@ -94,25 +154,20 @@ class LinkNumberHeaderPanel extends StatelessWidget {
                       minHeight: statGridHeight,
                       labelStyleOverride: compact
                           ? AppStyles.h4(
-                              color: AppColors.white.withValues(alpha: 0.96),
+                              color: AppColors.white.withValues(alpha: 0.98),
                               fontWeight: FontWeight.w900,
                             )
                           : AppStyles.h3(
-                              color: AppColors.white.withValues(alpha: 0.96),
+                              color: AppColors.white.withValues(alpha: 0.98),
                               fontWeight: FontWeight.w900,
                             ),
-                      value: snapshot.isGoalCountMode
-                          ? null
-                          : '${snapshot.remainingScore}',
-                      content: snapshot.isGoalCountMode
-                          ? _GoalCountInlineContent(
-                              targets: snapshot.goalTargets,
-                              compact: compact,
-                            )
-                          : null,
+                      content: _GoalPrimaryContent(
+                        snapshot: snapshot,
+                        compact: compact,
+                      ),
                     ),
                   ),
-                  statGap.width,
+                  cardGap.width,
                   Expanded(
                     flex: 3,
                     child: Column(
@@ -131,12 +186,19 @@ class LinkNumberHeaderPanel extends StatelessWidget {
                         SizedBox(height: rightStatGap),
                         Expanded(
                           child: _HeaderStatCard(
-                            label: LocaleKey.linkNumberCurrent.tr,
-                            accentColor: AppColors.colorFFE53E,
+                            label: '',
+                            accentColor: AppColors.color2D7DD2,
                             compact: compact,
                             minHeight: 0,
                             dense: true,
-                            value: currentValue == null ? '-' : '$currentValue',
+                            showHeader: false,
+                            content: isCurrentEmpty
+                                ? const SizedBox.shrink()
+                                : _GoalMiniBall(
+                                    value: currentValue,
+                                    compact: true,
+                                    sizeOverride: compact ? 54 : 60,
+                                  ),
                           ),
                         ),
                       ],
@@ -162,6 +224,7 @@ class _HeaderStatCard extends StatelessWidget {
     this.labelStyleOverride,
     this.value,
     this.content,
+    this.showHeader = true,
   });
 
   final String label;
@@ -172,17 +235,18 @@ class _HeaderStatCard extends StatelessWidget {
   final bool dense;
   final TextStyle? labelStyleOverride;
   final Widget? content;
+  final bool showHeader;
 
   @override
   Widget build(BuildContext context) {
     final hasCustomContent = content != null;
     final titleStyle = compact
         ? AppStyles.bodyMedium(
-            color: AppColors.white.withValues(alpha: 0.94),
+            color: AppColors.white.withValues(alpha: 0.95),
             fontWeight: FontWeight.w800,
           )
         : AppStyles.bodyLarge(
-            color: AppColors.white.withValues(alpha: 0.94),
+            color: AppColors.white.withValues(alpha: 0.95),
             fontWeight: FontWeight.w800,
           );
     final resolvedTitleStyle = labelStyleOverride ?? titleStyle;
@@ -200,42 +264,180 @@ class _HeaderStatCard extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.color131A29.withValues(alpha: 0.84),
-        borderRadius: 11.borderRadiusAll,
+        borderRadius: 13.borderRadiusAll,
         border: Border.all(
-          color: AppColors.colorF586AA6.withValues(alpha: 0.55),
+          color: AppColors.colorF59AEF9.withValues(alpha: 0.72),
+          width: 1,
         ),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            AppColors.color1C274C.withValues(alpha: 0.86),
+            AppColors.color131A29.withValues(alpha: 0.9),
+          ],
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: AppColors.color1A2D7DD2.withValues(alpha: 0.5),
+            blurRadius: 16,
+            spreadRadius: 0.2,
+          ),
+          BoxShadow(
+            color: AppColors.black.withValues(alpha: 0.26),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Padding(
         padding:
             (dense
-                    ? (compact ? 4 : 5)
-                    : hasCustomContent
                     ? (compact ? 5 : 6)
-                    : (compact ? 7 : 8))
+                    : hasCustomContent
+                    ? (compact ? 6 : 8)
+                    : (compact ? 8 : 10))
                 .paddingAll,
         child: ConstrainedBox(
           constraints: BoxConstraints(minHeight: minHeight),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: resolvedTitleStyle,
-              ),
-              (dense
-                      ? (compact ? 1 : 2)
-                      : hasCustomContent
-                      ? (compact ? 1 : 2)
-                      : (compact ? 3 : 4))
-                  .height,
+              if (showHeader) ...<Widget>[
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: resolvedTitleStyle,
+                ),
+                (compact ? 3 : 4).height,
+                SizedBox(
+                  width: dense ? 44 : 68,
+                  child: Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: AppColors.white.withValues(alpha: 0.15),
+                  ),
+                ),
+                (dense
+                        ? (compact ? 2 : 3)
+                        : hasCustomContent
+                        ? (compact ? 3 : 4)
+                        : (compact ? 4 : 6))
+                    .height,
+              ],
               valueWidget,
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _GoalPrimaryContent extends StatelessWidget {
+  const _GoalPrimaryContent({required this.snapshot, required this.compact});
+
+  final LinkNumberSnapshot snapshot;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = snapshot.isGoalCountMode
+        ? _goalCountProgress(snapshot.goalTargets)
+        : _goalScoreProgress(snapshot);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        if (snapshot.isGoalCountMode)
+          _GoalCountInlineContent(
+            targets: snapshot.goalTargets,
+            compact: compact,
+          )
+        else
+          Text(
+            '${snapshot.remainingScore}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: compact
+                ? AppStyles.h3(
+                    color: AppColors.colorFFE53E,
+                    fontWeight: FontWeight.w800,
+                  )
+                : AppStyles.h2(
+                    color: AppColors.colorFFE53E,
+                    fontWeight: FontWeight.w800,
+                  ),
+          ),
+        // (compact ? 8 : 10).height,
+        // _GoalProgressBar(progress: progress, compact: compact),
+      ],
+    );
+  }
+}
+
+class _GoalProgressBar extends StatelessWidget {
+  const _GoalProgressBar({required this.progress, required this.compact});
+
+  final double progress;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final clampedProgress = progress.clamp(0, 1).toDouble();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite
+            ? constraints.maxWidth * clampedProgress
+            : 0.0;
+
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: 999.borderRadiusAll,
+            border: Border.all(
+              color: AppColors.colorF59AEF9.withValues(alpha: 0.42),
+            ),
+            gradient: LinearGradient(
+              colors: <Color>[
+                AppColors.color1C274C.withValues(alpha: 0.88),
+                AppColors.color131A29.withValues(alpha: 0.9),
+              ],
+            ),
+          ),
+          child: SizedBox(
+            height: compact ? 11 : 13,
+            child: Stack(
+              children: <Widget>[
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOut,
+                  width: width,
+                  decoration: BoxDecoration(
+                    borderRadius: 999.borderRadiusAll,
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: <Color>[
+                        AppColors.color0095FF,
+                        AppColors.colorF59AEF9,
+                      ],
+                    ),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: AppColors.color1A0095FF.withValues(alpha: 0.8),
+                        blurRadius: 12,
+                        spreadRadius: 0.2,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -260,8 +462,8 @@ class _GoalCountInlineContent extends StatelessWidget {
 
     return Wrap(
       alignment: WrapAlignment.center,
-      spacing: compact ? 4 : 6,
-      runSpacing: compact ? 1 : 2,
+      spacing: compact ? 6 : 8,
+      runSpacing: compact ? 3 : 4,
       children: targets
           .map(
             (target) => _GoalTargetChip(
@@ -291,13 +493,39 @@ class _GoalTargetChip extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        _GoalMiniBall(value: value, compact: compact),
-        1.height,
-        Text(
-          '$remaining',
-          style: AppStyles.bodyMedium(
-            color: AppColors.white,
-            fontWeight: FontWeight.w700,
+        _GoalMiniBall(
+          value: value,
+          compact: true,
+          sizeOverride: compact ? 74 : 80,
+        ),
+        Transform.translate(
+          offset: Offset(0, compact ? -10 : -12),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: 999.borderRadiusAll,
+              border: Border.all(
+                color: AppColors.white.withValues(alpha: 0.24),
+              ),
+              gradient: LinearGradient(
+                colors: <Color>[
+                  _linkNumberColorForValue(value).withValues(alpha: 0.28),
+                  AppColors.color131A29.withValues(alpha: 0.86),
+                ],
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 8 : 10,
+                vertical: compact ? 1 : 2,
+              ),
+              child: Text(
+                '$remaining',
+                style: AppStyles.bodyMedium(
+                  color: AppColors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
           ),
         ),
       ],
@@ -306,14 +534,19 @@ class _GoalTargetChip extends StatelessWidget {
 }
 
 class _GoalMiniBall extends StatelessWidget {
-  const _GoalMiniBall({required this.value, required this.compact});
+  const _GoalMiniBall({
+    required this.value,
+    required this.compact,
+    this.sizeOverride,
+  });
 
   final int value;
   final bool compact;
+  final double? sizeOverride;
 
   @override
   Widget build(BuildContext context) {
-    final size = compact ? 52.0 : 60.0;
+    final size = sizeOverride ?? (compact ? 52.0 : 60.0);
     if (AppAssets.supportsLinkNumberAnimatedBall(value)) {
       return SizedBox(
         width: size,
@@ -519,28 +752,68 @@ class _CornerStatBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final content = DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.color131A29.withValues(alpha: 0.92),
         borderRadius: 999.borderRadiusAll,
-        border: Border.all(
-          color: AppColors.colorF586AA6.withValues(alpha: 0.55),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: <Color>[
+            AppColors.color1C274C.withValues(alpha: 0.9),
+            AppColors.color131A29.withValues(alpha: 0.93),
+          ],
         ),
+        border: Border.all(
+          color: AppColors.colorF59AEF9.withValues(alpha: 0.74),
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: iconColor.withValues(alpha: 0.24),
+            blurRadius: 14,
+            spreadRadius: 0.2,
+          ),
+          BoxShadow(
+            color: AppColors.black.withValues(alpha: 0.22),
+            blurRadius: 7,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Padding(
         padding: EdgeInsets.symmetric(
-          horizontal: compact ? 8 : 10,
-          vertical: compact ? 4 : 5,
+          horizontal: compact ? 10 : 12,
+          vertical: compact ? 5 : 7,
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Icon(icon, color: iconColor, size: compact ? 15 : 16),
-            (compact ? 3 : 4).width,
+            DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: iconColor.withValues(alpha: 0.22),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: iconColor.withValues(alpha: 0.34),
+                    blurRadius: 10,
+                    spreadRadius: 0.2,
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: (compact ? 4 : 5).paddingAll,
+                child: Icon(icon, color: iconColor, size: compact ? 16 : 18),
+              ),
+            ),
+            (compact ? 6 : 8).width,
             Text(
               value,
-              style: AppStyles.bodyMedium(
-                color: AppColors.white,
-                fontWeight: FontWeight.w700,
-              ),
+              style: compact
+                  ? AppStyles.h4(
+                      color: AppColors.colorFFE53E,
+                      fontWeight: FontWeight.w800,
+                    )
+                  : AppStyles.h3(
+                      color: AppColors.colorFFE53E,
+                      fontWeight: FontWeight.w800,
+                    ),
             ),
           ],
         ),

@@ -15,18 +15,18 @@ GifInfo _fakeGifInfo() {
 
 void main() {
   group('LinkNumberGifPreloader', () {
-    test('buildDefaultAssetPaths contains 18 gif assets', () {
+    test('buildDefaultAssetPaths contains 33 gif assets', () {
       final assetPaths = LinkNumberGifPreloader.buildDefaultAssetPaths();
 
-      expect(assetPaths, hasLength(18));
+      expect(assetPaths, hasLength(33));
       expect(assetPaths, contains(AppAssets.linkNumberBallIdleLoopGif(2)));
       expect(
         assetPaths,
-        contains(AppAssets.linkNumberBallSelectedPathLoopGif(64)),
+        contains(AppAssets.linkNumberBallSelectedPathLoopGif(2048)),
       );
       expect(
         assetPaths,
-        contains(AppAssets.linkNumberBallDestroyingOutGif(32)),
+        contains(AppAssets.linkNumberBallDestroyingOutGif(1024)),
       );
     });
 

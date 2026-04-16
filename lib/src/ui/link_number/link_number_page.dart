@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'dart:math' as math;
 
 import 'package:flow_connection/src/extensions/int_extensions.dart';
 import 'package:flow_connection/src/ui/link_number/components/link_number_board.dart';
@@ -87,80 +86,70 @@ class _BoardArea extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (_, constraints) {
-        final skillPanelBottomPadding = compact ? 4.0 : 6.0;
-        final skillPanelHeight = compact ? 62.0 : 68.0;
+        final skillPanelHeight = compact ? 98.0 : 108.0;
+        final skillPanelTopSpacing = compact ? 6.0 : 8.0;
         final rows = snapshot.board.length;
         if (rows <= 0 || snapshot.board.first.isEmpty) {
           return const SizedBox.shrink();
         }
-        final columns = snapshot.board.first.length;
-        final boardAspectRatio = columns / rows;
-        final boardWidth = math.min(
-          constraints.maxWidth,
-          constraints.maxHeight * boardAspectRatio,
-        );
-        final boardFrameHeight = boardWidth / boardAspectRatio;
-        if (boardWidth <= 0 || boardFrameHeight <= 0) {
-          return const SizedBox.shrink();
-        }
+        final boardAvailableHeight =
+            constraints.maxHeight - skillPanelHeight - skillPanelTopSpacing;
+        final boardWidth = constraints.maxWidth;
+        final boardFrameHeight = boardAvailableHeight > 0
+            ? boardAvailableHeight
+            : 0.0;
 
-        return Align(
-          alignment: Alignment.topCenter,
-          child: SizedBox(
-            width: boardWidth,
-            height: constraints.maxHeight,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: <Widget>[
-                Align(
-                  alignment: Alignment.topCenter,
-                  child: SizedBox(
-                    width: boardWidth,
-                    height: boardFrameHeight,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: AppColors.black.withValues(alpha: 0.18),
-                        borderRadius: 14.borderRadiusAll,
-                        border: Border.all(
-                          color: AppColors.colorF586AA6.withValues(alpha: 0.55),
+        return Column(
+          children: <Widget>[
+            Expanded(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: (boardWidth <= 0 || boardFrameHeight <= 0)
+                    ? const SizedBox.shrink()
+                    : SizedBox(
+                        width: boardWidth,
+                        height: boardFrameHeight,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: AppColors.black.withValues(alpha: 0.18),
+                            borderRadius: 14.borderRadiusAll,
+                            border: Border.all(
+                              color: AppColors.colorF586AA6.withValues(
+                                alpha: 0.55,
+                              ),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: 10.paddingAll,
+                            child: LinkNumberBoard(
+                              snapshot: snapshot,
+                              onPanStart: controller.onPanStart,
+                              onPanUpdate: controller.onPanUpdate,
+                              onPanEnd: controller.onPanEnd,
+                              onCellTap: controller.onBoardTap,
+                              onRetry: snapshot.hasLost
+                                  ? controller.retryLevel
+                                  : controller.restartLevel,
+                              onNextLevel: controller.nextLevel,
+                            ),
+                          ),
                         ),
                       ),
-                      child: Padding(
-                        padding: 10.paddingAll,
-                        child: LinkNumberBoard(
-                          snapshot: snapshot,
-                          onPanStart: controller.onPanStart,
-                          onPanUpdate: controller.onPanUpdate,
-                          onPanEnd: controller.onPanEnd,
-                          onCellTap: controller.onBoardTap,
-                          onRetry: snapshot.hasLost
-                              ? controller.retryLevel
-                              : controller.restartLevel,
-                          onNextLevel: controller.nextLevel,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: skillPanelBottomPadding,
-                  child: SizedBox(
-                    height: skillPanelHeight,
-                    child: LinkNumberSkillPanel(
-                      snapshot: snapshot,
-                      compact: compact,
-                      onToggleBreakTile: () =>
-                          controller.selectSkill(LinkNumberSkillType.breakTile),
-                      onToggleSwapTiles: () =>
-                          controller.selectSkill(LinkNumberSkillType.swapTiles),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+            SizedBox(height: skillPanelTopSpacing),
+            SizedBox(
+              height: skillPanelHeight,
+              child: LinkNumberSkillPanel(
+                snapshot: snapshot,
+                compact: compact,
+                onToggleBreakTile: () =>
+                    controller.selectSkill(LinkNumberSkillType.breakTile),
+                onToggleSwapTiles: () =>
+                    controller.selectSkill(LinkNumberSkillType.swapTiles),
+              ),
+            ),
+          ],
         );
       },
     );

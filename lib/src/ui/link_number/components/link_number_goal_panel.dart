@@ -363,7 +363,12 @@ class _GoalBall extends StatelessWidget {
       8 => AppColors.colorEF4056,
       16 => AppColors.color9C27B0,
       32 => AppColors.color88CF66,
-      64 => AppColors.colorF39702,
+      64 => AppColors.colorD97706,
+      128 => AppColors.color14B8A6,
+      256 => AppColors.color06B6D4,
+      512 => AppColors.color3B82F6,
+      1024 => AppColors.colorF97316,
+      2048 => AppColors.color111827,
       _ => AppColors.color1D2410,
     };
   }

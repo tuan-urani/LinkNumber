@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import 'package:flow_connection/src/core/managers/game_progress_manager.dart';
+import 'package:flow_connection/src/utils/app_assets.dart';
+
 import 'link_number_engine.dart';
+import 'link_number_merge_timing.dart';
 import 'link_number_snapshot.dart';
 
 class LinkNumberController extends GetxController {
-  static const int _mergeDelayBaseMs = 220;
-  static const int _mergeDelayPerCellMs = 65;
-  static const int _mergeDelayMaxMs = 920;
+  LinkNumberController({
+    LinkNumberEngine? engine,
+    GameProgressManager? progressManager,
+  }) : _engine =
+           engine ??
+           LinkNumberEngine(
+             progressManager:
+                 progressManager ?? Get.find<GameProgressManager>(),
+           );
 
-  final LinkNumberEngine _engine = LinkNumberEngine();
+  final LinkNumberEngine _engine;
   late final Rx<LinkNumberSnapshot> snapshot = _engine.snapshot.obs;
   bool _isResolvingMerge = false;
 
@@ -49,12 +59,16 @@ class LinkNumberController extends GetxController {
       return;
     }
 
-    final mergeDelay = _mergeCommitDelayForPathLength(
-      current.activePath.length,
+    final activeValue = current.activeValue;
+    final mergeTiming = MergeTimingSpec.balanced(
+      pathLength: current.activePath.length,
+      hasAnimatedGif:
+          activeValue != null &&
+          AppAssets.supportsLinkNumberAnimatedBall(activeValue),
     );
     _isResolvingMerge = true;
     try {
-      await Future<void>.delayed(mergeDelay);
+      await Future<void>.delayed(mergeTiming.commitDelay);
       if (isClosed) {
         return;
       }
@@ -114,15 +128,5 @@ class LinkNumberController extends GetxController {
       return;
     }
     snapshot.value = _engine.nextLevel();
-  }
-
-  Duration _mergeCommitDelayForPathLength(int pathLength) {
-    final normalizedLength = pathLength < 2 ? 2 : pathLength;
-    final rawDelay =
-        _mergeDelayBaseMs + ((normalizedLength - 1) * _mergeDelayPerCellMs);
-    final resolvedDelay = rawDelay > _mergeDelayMaxMs
-        ? _mergeDelayMaxMs
-        : rawDelay;
-    return Duration(milliseconds: resolvedDelay);
   }
 }

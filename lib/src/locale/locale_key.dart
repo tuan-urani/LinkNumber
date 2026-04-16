@@ -44,4 +44,12 @@ class LocaleKey {
   static const String linkNumberRetryLevel = 'link_number_retry_level';
   static const String linkNumberNextLevel = 'link_number_next_level';
   static const String linkNumberPlayAgain = 'link_number_play_again';
+  static const String splashLoading = 'splash_loading';
+  static const String gameMenuHighestBlock = 'game_menu_highest_block';
+  static const String gameMenuDaily = 'game_menu_daily';
+  static const String gameMenuWheel = 'game_menu_wheel';
+  static const String gameMenuPlay = 'game_menu_play';
+  static const String gameMenuReward = 'game_menu_reward';
+  static const String gameMenuLevel = 'game_menu_level';
+  static const String gameMenuStars = 'game_menu_stars';
 }

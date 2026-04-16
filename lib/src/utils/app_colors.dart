@@ -77,6 +77,12 @@ class AppColors {
   static const colorF8F1DD = Color(0xFFF8F1DD);
   static const colorB7B7B7 = Color(0xFFB7B7B7);
   static const colorFF8C42 = Color(0xFFFF8C42);
+  static const colorD97706 = Color(0xFFD97706);
+  static const color14B8A6 = Color(0xFF14B8A6);
+  static const color06B6D4 = Color(0xFF06B6D4);
+  static const color3B82F6 = Color(0xFF3B82F6);
+  static const colorF97316 = Color(0xFFF97316);
+  static const color111827 = Color(0xFF111827);
   static const color1AFF8C42 = Color(0x1AFF8C42);
   static const colorF1D2BC = Color(0xFFF1D2BC);
   static const colorDFE4F5 = Color(0xFFDFE4F5);
@@ -127,6 +133,18 @@ class AppColors {
   static const colorFFEAEA = Color(0xFFFFEAEA);
   static const colorEAECF0 = Color(0xFFEAECF0);
   static const colorFFE2D0 = Color(0xFFFFE2D0);
+  static const splashBackgroundTop = Color(0xFF3C3EC9);
+  static const splashBackgroundBottom = Color(0xFF1E1D8D);
+  static const splashBlockLight = Color(0x403838AA);
+  static const splashBlockDark = Color(0x4D1B1C6F);
+  static const splashTileBlue = Color(0xFF39B2E8);
+  static const splashTilePink = Color(0xFFFF5B8A);
+  static const splashTileOrange = Color(0xFFFFA224);
+  static const splashTileShadowBlue = Color(0xFF0C73B4);
+  static const splashTileShadowPink = Color(0xFFBD2E57);
+  static const splashTileShadowOrange = Color(0xFFCC6C00);
+  static const splashProgressTrack = Color(0xFF09084F);
+  static const splashProgressFill = Color(0xFFFFDB12);
 
   // ===========================================================================
   // BACKGROUND

@@ -1,17 +1,24 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
+
+import 'package:flow_connection/src/core/managers/game_progress_manager.dart';
 
 import 'link_number_snapshot.dart';
 
 class LinkNumberEngine {
-  LinkNumberEngine() {
+  LinkNumberEngine({required GameProgressManager progressManager})
+    : _progressManager = progressManager,
+      _currentLevel = progressManager.currentLevel,
+      _coins = progressManager.coins,
+      _stars = progressManager.stars {
     _snapshot = _buildSnapshotForLevel(
       level: _currentLevel,
       registerMode: true,
     );
   }
 
-  static const int rows = 7;
+  static const int rows = 6;
   static const int columns = 5;
 
   // Global tuning constants.
@@ -20,8 +27,7 @@ class LinkNumberEngine {
   static const double kGlobalBalancePenalty = 0.25;
 
   static const int _minPlayablePairs = 4;
-  static const int _startingCoins = 200;
-  static const int _startingSwapCharges = 2;
+  static const int _startingSwapCharges = 100;
   static const int _breakTileCost = 200;
   static const int _rewardAdCoins = 200;
 
@@ -194,16 +200,17 @@ class LinkNumberEngine {
   ];
 
   final math.Random _random = math.Random();
+  final GameProgressManager _progressManager;
 
   late LinkNumberSnapshot _snapshot;
   Map<int, double> _activeSpawnWeights = Map<int, double>.from(
     _spawnWeightsStage1,
   );
 
-  int _currentLevel = 1;
-  int _coins = _startingCoins;
+  int _currentLevel;
+  int _coins;
   int _swapCharges = _startingSwapCharges;
-  int _stars = 0;
+  int _stars;
 
   LinkNumberGoalMode? _lastGoalMode;
   int _sameModeStreak = 0;
@@ -247,12 +254,14 @@ class LinkNumberEngine {
       level: _currentLevel,
       registerMode: true,
     );
+    unawaited(_persistProgress());
     return _snapshot;
   }
 
   LinkNumberSnapshot claimRewardCoins() {
     _coins += _rewardAdCoins;
     _snapshot = _snapshot.copyWith(coins: _coins);
+    unawaited(_persistProgress());
     return _snapshot;
   }
 
@@ -547,11 +556,21 @@ class LinkNumberEngine {
 
     _coins = math.max(0, _coins - _snapshot.breakTileCost);
 
-    return _clearCells(
+    final nextSnapshot = _clearCells(
       <LinkNumberCell>[cell],
       consumeMove: false,
       consumeSkillSelection: true,
       updatedCoins: _coins,
+    );
+    unawaited(_persistProgress());
+    return nextSnapshot;
+  }
+
+  Future<void> _persistProgress() {
+    return _progressManager.saveProgress(
+      currentLevel: _currentLevel,
+      coins: _coins,
+      stars: _stars,
     );
   }
 

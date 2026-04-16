@@ -8,6 +8,7 @@ import 'package:get/get.dart';
 import 'package:flow_connection/src/extensions/int_extensions.dart';
 import 'package:flow_connection/src/locale/locale_key.dart';
 import 'package:flow_connection/src/ui/link_number/interactor/link_number_gif_preloader.dart';
+import 'package:flow_connection/src/ui/link_number/interactor/link_number_merge_timing.dart';
 import 'package:flow_connection/src/ui/link_number/interactor/link_number_snapshot.dart';
 import 'package:flow_connection/src/ui/widgets/app_circular_progress.dart';
 import 'package:flow_connection/src/utils/app_assets.dart';
@@ -25,7 +26,12 @@ Color _linkNumberColorForValue(int value) {
     8 => AppColors.colorEF4056,
     16 => AppColors.color9C27B0,
     32 => AppColors.color88CF66,
-    64 => AppColors.colorF39702,
+    64 => AppColors.colorD97706,
+    128 => AppColors.color14B8A6,
+    256 => AppColors.color06B6D4,
+    512 => AppColors.color3B82F6,
+    1024 => AppColors.colorF97316,
+    2048 => AppColors.color111827,
     _ => AppColors.color1D2410,
   };
 }
@@ -67,10 +73,11 @@ class LinkNumberBoard extends StatefulWidget {
 
 class _LinkNumberBoardState extends State<LinkNumberBoard>
     with TickerProviderStateMixin {
-  static const int _resolveDelayBaseMs = 220;
-  static const int _resolveDelayPerCellMs = 65;
-  static const int _resolveDelayMaxMs = 920;
   static const int _resolveCellFadeMs = 220;
+  static const int _minDropStartAfterCommitMs = 16;
+  static const Duration _breakAxeTravelDuration = Duration(milliseconds: 190);
+  static const Duration _breakAxeImpactDuration = Duration(milliseconds: 290);
+  static const Duration _breakCommitDelay = Duration(milliseconds: 110);
 
   static const Duration _pathFlowDuration = Duration(milliseconds: 1300);
   static const Duration _mergeBurstDuration = Duration(milliseconds: 760);
@@ -86,16 +93,19 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
 
   late final LinkNumberGifPreloader _gifPreloader;
   late final AnimationController _pathFlowController;
+  late final AnimationController _releasePathLineController;
   late final AnimationController _pathResolveController;
   late final AnimationController _mergeBurstController;
   late final AnimationController _dropCascadeController;
   late final AnimationController _cellPopController;
+  late final AnimationController _skillFxController;
 
   Set<LinkNumberCell> _poppingCells = <LinkNumberCell>{};
   LinkNumberCell? _mergeCenterCell;
   int _mergeScoreGain = 0;
   int _tilePopSequence = 0;
   int _pathResolveSequence = 0;
+  List<LinkNumberCell> _releasePath = const <LinkNumberCell>[];
   List<LinkNumberCell> _resolvingPath = const <LinkNumberCell>[];
   List<LinkNumberCell> _burstPath = const <LinkNumberCell>[];
   List<int> _burstPathValues = const <int>[];
@@ -106,6 +116,12 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
   Set<LinkNumberCell> _pendingMergeChangedCells = <LinkNumberCell>{};
   int _dropSequence = 0;
   List<_DropTileMotion> _dropMotions = const <_DropTileMotion>[];
+  int _skillFxSequence = 0;
+  bool _isSkillInputLocked = false;
+  _SkillFxKind _skillFxKind = _SkillFxKind.none;
+  LinkNumberCell? _breakSkillTargetCell;
+  int? _breakSkillTargetValue;
+  Offset _breakSkillTravelStart = Offset.zero;
 
   @override
   void initState() {
@@ -117,9 +133,16 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
       vsync: this,
       duration: _pathFlowDuration,
     );
+    _releasePathLineController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    )..addStatusListener(_onReleasePathLineStatusChanged);
     _pathResolveController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: _resolveDelayBaseMs),
+      duration: MergeTimingSpec.balanced(
+        pathLength: 2,
+        hasAnimatedGif: false,
+      ).resolveDuration,
     )..addStatusListener(_onPathResolveStatusChanged);
     _mergeBurstController = AnimationController(
       vsync: this,
@@ -133,6 +156,10 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
       vsync: this,
       duration: _tilePopDuration,
     )..addStatusListener(_onCellPopStatusChanged);
+    _skillFxController = AnimationController(
+      vsync: this,
+      duration: _breakAxeTravelDuration,
+    );
 
     _syncPathFlowAnimation(widget.snapshot);
   }
@@ -152,11 +179,14 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     _gifPreloader.progress.removeListener(_onGifPreloadProgressChanged);
     _tilePopSequence++;
     _dropSequence++;
+    _skillFxSequence++;
     _pathFlowController.dispose();
+    _releasePathLineController.dispose();
     _pathResolveController.dispose();
     _mergeBurstController.dispose();
     _dropCascadeController.dispose();
     _cellPopController.dispose();
+    _skillFxController.dispose();
     super.dispose();
   }
 
@@ -191,12 +221,31 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     });
   }
 
+  void _onReleasePathLineStatusChanged(AnimationStatus status) {
+    if (status != AnimationStatus.completed || !mounted) {
+      return;
+    }
+
+    if (_releasePath.isEmpty || widget.snapshot.activePath.isNotEmpty) {
+      return;
+    }
+
+    setState(() {
+      _releasePath = const <LinkNumberCell>[];
+    });
+  }
+
   void _onPathResolveStatusChanged(AnimationStatus status) {
     if (status != AnimationStatus.completed || !mounted) {
       return;
     }
 
     if (_resolvingPath.isEmpty) {
+      return;
+    }
+
+    if (widget.snapshot.activePath.isNotEmpty) {
+      // Keep resolved cells hidden until merge commit updates the snapshot.
       return;
     }
 
@@ -227,6 +276,164 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     });
   }
 
+  bool _isBoardInputBlocked(LinkNumberSnapshot snapshot) {
+    return _isSkillInputLocked || snapshot.isGameOver;
+  }
+
+  LinkNumberCell? _mapToCell(
+    Offset localPosition,
+    Size boardSize, {
+    required int rows,
+    required int columns,
+  }) {
+    if (boardSize.width <= 0 || boardSize.height <= 0) {
+      return null;
+    }
+
+    if (localPosition.dx < 0 ||
+        localPosition.dy < 0 ||
+        localPosition.dx >= boardSize.width ||
+        localPosition.dy >= boardSize.height) {
+      return null;
+    }
+
+    final cellWidth = boardSize.width / columns;
+    final cellHeight = boardSize.height / rows;
+    final column = (localPosition.dx / cellWidth).floor();
+    final row = (localPosition.dy / cellHeight).floor();
+    if (row < 0 || row >= rows || column < 0 || column >= columns) {
+      return null;
+    }
+    return LinkNumberCell(row: row, column: column);
+  }
+
+  void _clearSkillFxVisualState({bool unlockInput = true}) {
+    _skillFxController.stop();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _skillFxKind = _SkillFxKind.none;
+      _breakSkillTargetCell = null;
+      _breakSkillTargetValue = null;
+      if (unlockInput) {
+        _isSkillInputLocked = false;
+      }
+    });
+  }
+
+  void _runBreakSkillExecute({
+    required Offset localPosition,
+    required Size boardSize,
+    required LinkNumberCell targetCell,
+    required int targetValue,
+  }) {
+    if (widget.snapshot.selectedSkill != LinkNumberSkillType.breakTile) {
+      return;
+    }
+
+    final sequence = ++_skillFxSequence;
+    final start = Offset(boardSize.width * 0.5, -boardSize.height * 0.22);
+    setState(() {
+      _isSkillInputLocked = true;
+      _skillFxKind = _SkillFxKind.breakTravel;
+      _breakSkillTargetCell = targetCell;
+      _breakSkillTargetValue = targetValue;
+      _breakSkillTravelStart = start;
+    });
+    _skillFxController.stop();
+    _skillFxController.duration = _breakAxeTravelDuration;
+    _skillFxController.forward(from: 0);
+
+    Future<void>.delayed(_breakAxeTravelDuration, () {
+      if (!mounted || sequence != _skillFxSequence) {
+        return;
+      }
+      if (widget.snapshot.selectedSkill != LinkNumberSkillType.breakTile) {
+        _clearSkillFxVisualState();
+        return;
+      }
+      _skillFxController.stop();
+      _skillFxController.duration = _breakAxeImpactDuration;
+      setState(() {
+        _skillFxKind = _SkillFxKind.breakImpact;
+      });
+      _skillFxController.forward(from: 0);
+      Future<void>.delayed(_breakCommitDelay, () {
+        if (!mounted || sequence != _skillFxSequence) {
+          return;
+        }
+        widget.onCellTap(localPosition, boardSize);
+      });
+    });
+
+    final clearAt = _breakAxeTravelDuration + _breakAxeImpactDuration;
+    Future<void>.delayed(clearAt, () {
+      if (!mounted || sequence != _skillFxSequence) {
+        return;
+      }
+      _clearSkillFxVisualState();
+    });
+  }
+
+  void _handleBoardTapDown(
+    Offset localPosition,
+    Size boardSize, {
+    required int rows,
+    required int columns,
+  }) {
+    final snapshot = widget.snapshot;
+    if (_isBoardInputBlocked(snapshot)) {
+      return;
+    }
+
+    final selectedSkill = snapshot.selectedSkill;
+    if (selectedSkill == null) {
+      widget.onCellTap(localPosition, boardSize);
+      return;
+    }
+
+    final tappedCell = _mapToCell(
+      localPosition,
+      boardSize,
+      rows: rows,
+      columns: columns,
+    );
+    if (tappedCell == null) {
+      return;
+    }
+
+    if (selectedSkill == LinkNumberSkillType.breakTile) {
+      final value = _boardValueAt(snapshot.board, tappedCell);
+      if (value <= 0 || !snapshot.canUseBreakTile) {
+        return;
+      }
+      _runBreakSkillExecute(
+        localPosition: localPosition,
+        boardSize: boardSize,
+        targetCell: tappedCell,
+        targetValue: value,
+      );
+      return;
+    }
+
+    if (selectedSkill == LinkNumberSkillType.swapTiles) {
+      if (!snapshot.canUseSwapTile) {
+        return;
+      }
+      final tappedValue = _boardValueAt(snapshot.board, tappedCell);
+      if (tappedValue <= 0) {
+        return;
+      }
+      final pendingSwapCell = snapshot.pendingSwapCell;
+      if (pendingSwapCell != null && pendingSwapCell == tappedCell) {
+        return;
+      }
+    }
+
+    widget.onCellTap(localPosition, boardSize);
+  }
+
   void _syncPathFlowAnimation(LinkNumberSnapshot snapshot) {
     final shouldAnimate = snapshot.activePath.length >= 2;
     if (shouldAnimate) {
@@ -245,23 +452,30 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     }
   }
 
-  int _resolveDurationMsForPathLength(int pathLength) {
-    final normalizedLength = pathLength < 2 ? 2 : pathLength;
-    final rawMs =
-        _resolveDelayBaseMs + ((normalizedLength - 1) * _resolveDelayPerCellMs);
-    return rawMs > _resolveDelayMaxMs ? _resolveDelayMaxMs : rawMs;
-  }
-
-  void _startPathResolve(List<LinkNumberCell> path) {
-    final durationMs = _resolveDurationMsForPathLength(path.length);
+  void _startPathResolve(
+    List<LinkNumberCell> resolvingCells, {
+    required Duration duration,
+  }) {
     _pathFlowController.stop();
     _pathFlowController.value = 0;
-    _pathResolveController.duration = Duration(milliseconds: durationMs);
+    _pathResolveController.duration = duration;
     _pathResolveSequence += 1;
     setState(() {
-      _resolvingPath = List<LinkNumberCell>.from(path);
+      _resolvingPath = List<LinkNumberCell>.from(resolvingCells);
     });
     _pathResolveController.forward(from: 0);
+  }
+
+  void _startReleasePathLineFade(
+    List<LinkNumberCell> path, {
+    required Duration fadeDuration,
+  }) {
+    _releasePathLineController.stop();
+    _releasePathLineController.duration = fadeDuration;
+    setState(() {
+      _releasePath = List<LinkNumberCell>.from(path);
+    });
+    _releasePathLineController.forward(from: 0);
   }
 
   double _destroyProgressForCell(LinkNumberCell cell) {
@@ -277,13 +491,17 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     final totalMs =
         _pathResolveController.duration?.inMilliseconds.toDouble() ?? 1;
     final nowMs = _pathResolveController.value * totalMs;
-    final startMs = index * _resolveDelayPerCellMs.toDouble();
+    final startMs = index * MergeTimingSpec.resolveCellStaggerMs.toDouble();
     final local = ((nowMs - startMs) / _resolveCellFadeMs).clamp(0.0, 1.0);
     return Curves.easeInCubic.transform(local);
   }
 
   void _handlePanEnd() {
     final snapshot = widget.snapshot;
+    if (_isBoardInputBlocked(snapshot) || snapshot.selectedSkill != null) {
+      return;
+    }
+
     final path = List<LinkNumberCell>.from(snapshot.activePath);
     final shouldPlayResolve =
         path.length >= 2 &&
@@ -291,7 +509,25 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
         !snapshot.isGameOver;
 
     if (shouldPlayResolve) {
-      _startPathResolve(path);
+      final activeValue = snapshot.activeValue;
+      final hasAnimatedGif =
+          activeValue != null &&
+          AppAssets.supportsLinkNumberAnimatedBall(activeValue);
+      final mergeTiming = MergeTimingSpec.balanced(
+        pathLength: path.length,
+        hasAnimatedGif: hasAnimatedGif,
+      );
+      final resolvingCells = path.take(path.length - 1).toList(growable: false);
+      if (resolvingCells.isNotEmpty) {
+        _startPathResolve(
+          resolvingCells,
+          duration: mergeTiming.resolveDuration,
+        );
+      }
+      _startReleasePathLineFade(
+        path,
+        fadeDuration: mergeTiming.lineFadeDuration,
+      );
       _primeBurstForPath(path: path, board: snapshot.board);
       _isBurstPrimedByRelease = true;
     } else if (_resolvingPath.isNotEmpty) {
@@ -309,6 +545,13 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     required LinkNumberSnapshot oldSnapshot,
     required LinkNumberSnapshot newSnapshot,
   }) {
+    final oldActiveValue = oldSnapshot.activeValue;
+    final mergeTiming = MergeTimingSpec.balanced(
+      pathLength: oldSnapshot.activePath.length,
+      hasAnimatedGif:
+          oldActiveValue != null &&
+          AppAssets.supportsLinkNumberAnimatedBall(oldActiveValue),
+    );
     final changedCells = _collectChangedCells(
       previous: oldSnapshot.board,
       current: newSnapshot.board,
@@ -317,6 +560,13 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
         oldSnapshot.activePath.length >= 2 &&
         newSnapshot.activePath.isEmpty &&
         changedCells.isNotEmpty;
+    final breakTargetCell = _breakSkillTargetCell;
+    final isBreakSkillTransition =
+        !isValidMergeTransition &&
+        breakTargetCell != null &&
+        oldSnapshot.selectedSkill == LinkNumberSkillType.breakTile &&
+        newSnapshot.selectedSkill == null &&
+        changedCells.isNotEmpty;
 
     if (isValidMergeTransition) {
       final scoreGain = newSnapshot.score - oldSnapshot.score;
@@ -324,6 +574,13 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
       final dropMotions = _buildDropMotions(
         oldSnapshot: oldSnapshot,
         newSnapshot: newSnapshot,
+      );
+      final anchorIsDropping = dropMotions.any(
+        (motion) =>
+            motion.column == mergeAnchorCell.column &&
+            motion.fromRow >= 0 &&
+            motion.fromRow.round() == mergeAnchorCell.row &&
+            motion.toRow != mergeAnchorCell.row,
       );
       final maskedChangedCells = <LinkNumberCell>{
         ...changedCells,
@@ -339,7 +596,10 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
         ...dropMotions.map(
           (motion) => LinkNumberCell(row: motion.toRow, column: motion.column),
         ),
-      }..remove(mergeAnchorCell);
+      };
+      if (!anchorIsDropping) {
+        maskedChangedCells.remove(mergeAnchorCell);
+      }
       if (!_isBurstPrimedByRelease) {
         _primeBurstForPath(
           path: oldSnapshot.activePath,
@@ -348,6 +608,8 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
       }
       _isBurstPrimedByRelease = false;
       setState(() {
+        _releasePath = const <LinkNumberCell>[];
+        _resolvingPath = const <LinkNumberCell>[];
         _pendingMergeChangedCells = maskedChangedCells;
         if (scoreGain > 0) {
           _mergeCenterCell = mergeAnchorCell;
@@ -357,15 +619,61 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
           _mergeScoreGain = 0;
         }
       });
+      _releasePathLineController.stop();
       if (dropMotions.isNotEmpty) {
-        _startDropCascade(dropMotions, delay: _resolveDropCascadeStartDelay());
+        _startDropCascade(
+          dropMotions,
+          delay: _resolveDropCascadeStartDelay(mergeTiming),
+        );
+      }
+    } else if (isBreakSkillTransition) {
+      final dropMotions = _buildBreakDropMotions(
+        oldSnapshot: oldSnapshot,
+        newSnapshot: newSnapshot,
+        breakTargetCell: breakTargetCell,
+      );
+      final maskedChangedCells = <LinkNumberCell>{
+        ...changedCells,
+        ...dropMotions
+            .where((motion) => motion.fromRow >= 0)
+            .map(
+              (motion) => LinkNumberCell(
+                row: motion.fromRow.round(),
+                column: motion.column,
+              ),
+            ),
+        ...dropMotions.map(
+          (motion) => LinkNumberCell(row: motion.toRow, column: motion.column),
+        ),
+      };
+      setState(() {
+        _releasePath = const <LinkNumberCell>[];
+        _resolvingPath = const <LinkNumberCell>[];
+        _pendingMergeChangedCells = maskedChangedCells;
+        _mergeCenterCell = null;
+        _mergeScoreGain = 0;
+      });
+      _releasePathLineController.stop();
+      if (dropMotions.isNotEmpty) {
+        _startDropCascade(
+          dropMotions,
+          delay: const Duration(milliseconds: 130),
+        );
       }
     } else if (newSnapshot.activePath.isEmpty) {
       _isBurstPrimedByRelease = false;
+      if (_releasePath.isNotEmpty && !_releasePathLineController.isAnimating) {
+        setState(() {
+          _releasePath = const <LinkNumberCell>[];
+        });
+      }
     }
 
     if (changedCells.isNotEmpty) {
-      _scheduleTilePop(changedCells, delayed: isValidMergeTransition);
+      _scheduleTilePop(
+        changedCells,
+        delayed: isValidMergeTransition || isBreakSkillTransition,
+      );
     }
 
     if (newSnapshot.currentLevel != oldSnapshot.currentLevel &&
@@ -373,10 +681,16 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
             _mergeScoreGain > 0 ||
             _burstPath.isNotEmpty ||
             _dropMotions.isNotEmpty ||
-            _resolvingPath.isNotEmpty)) {
+            _resolvingPath.isNotEmpty ||
+            _releasePath.isNotEmpty ||
+            _skillFxKind != _SkillFxKind.none ||
+            _isSkillInputLocked)) {
       _mergeBurstController.stop();
       _dropCascadeController.stop();
       _pathResolveController.stop();
+      _releasePathLineController.stop();
+      _skillFxSequence += 1;
+      _skillFxController.stop();
       setState(() {
         _mergeCenterCell = null;
         _mergeScoreGain = 0;
@@ -387,7 +701,12 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
         _isDropCascadeRunning = false;
         _pendingMergeChangedCells = <LinkNumberCell>{};
         _dropMotions = const <_DropTileMotion>[];
+        _releasePath = const <LinkNumberCell>[];
         _resolvingPath = const <LinkNumberCell>[];
+        _isSkillInputLocked = false;
+        _skillFxKind = _SkillFxKind.none;
+        _breakSkillTargetCell = null;
+        _breakSkillTargetValue = null;
       });
       _isBurstPrimedByRelease = false;
     }
@@ -477,19 +796,25 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     return all;
   }
 
-  Duration _resolveDropCascadeStartDelay() {
+  Duration _resolveDropCascadeStartDelay(MergeTimingSpec mergeTiming) {
     final durationMs = _mergeBurstController.duration?.inMilliseconds ?? 0;
+    final baseDelayMs = math.max(
+      _minDropStartAfterCommitMs,
+      mergeTiming.dropStartBufferMs,
+    );
     if (durationMs <= 0) {
-      return const Duration(milliseconds: 90);
+      return Duration(milliseconds: baseDelayMs);
     }
 
     if (_mergeBurstController.isAnimating) {
       final remainingMs = ((1 - _mergeBurstController.value) * durationMs)
           .round();
-      return Duration(milliseconds: math.max(80, remainingMs + 40));
+      return Duration(
+        milliseconds: math.max(baseDelayMs, remainingMs + baseDelayMs),
+      );
     }
 
-    return const Duration(milliseconds: 90);
+    return Duration(milliseconds: baseDelayMs);
   }
 
   void _startDropCascade(
@@ -541,6 +866,89 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
       }
     }
     beforeGravity[anchor.row][anchor.column] = _nextPowerOfTwo(mergedSum);
+
+    final afterGravity = beforeGravity
+        .map((row) => List<int>.from(row))
+        .toList(growable: false);
+    _applyGravityInPlace(
+      afterGravity,
+      rowsCount: rowsCount,
+      columnsCount: columnsCount,
+    );
+
+    final motions = <_DropTileMotion>[];
+    for (int column = 0; column < columnsCount; column++) {
+      final sourceRows = <int>[];
+      final sourceValues = <int>[];
+      for (int row = rowsCount - 1; row >= 0; row--) {
+        final value = beforeGravity[row][column];
+        if (value > 0) {
+          sourceRows.add(row);
+          sourceValues.add(value);
+        }
+      }
+
+      final targetRows = <int>[];
+      for (int row = rowsCount - 1; row >= 0; row--) {
+        final value = afterGravity[row][column];
+        if (value > 0) {
+          targetRows.add(row);
+        }
+      }
+
+      final carryCount = math.min(sourceRows.length, targetRows.length);
+      for (int index = 0; index < carryCount; index++) {
+        final fromRow = sourceRows[index];
+        final toRow = targetRows[index];
+        if (fromRow == toRow) {
+          continue;
+        }
+        motions.add(
+          _DropTileMotion(
+            value: sourceValues[index],
+            column: column,
+            fromRow: fromRow.toDouble(),
+            toRow: toRow,
+          ),
+        );
+      }
+
+      int spawnIndex = 0;
+      for (int row = 0; row < rowsCount; row++) {
+        final expected = afterGravity[row][column];
+        final actual = newSnapshot.board[row][column];
+        if (expected == 0 && actual > 0) {
+          motions.add(
+            _DropTileMotion(
+              value: actual,
+              column: column,
+              fromRow: -1.0 - (spawnIndex * 0.42),
+              toRow: row,
+            ),
+          );
+          spawnIndex += 1;
+        }
+      }
+    }
+
+    return motions;
+  }
+
+  List<_DropTileMotion> _buildBreakDropMotions({
+    required LinkNumberSnapshot oldSnapshot,
+    required LinkNumberSnapshot newSnapshot,
+    required LinkNumberCell breakTargetCell,
+  }) {
+    final rowsCount = oldSnapshot.board.length;
+    if (rowsCount == 0) {
+      return const <_DropTileMotion>[];
+    }
+    final columnsCount = oldSnapshot.board.first.length;
+
+    final beforeGravity = oldSnapshot.board
+        .map((row) => List<int>.from(row))
+        .toList(growable: false);
+    beforeGravity[breakTargetCell.row][breakTargetCell.column] = 0;
 
     final afterGravity = beforeGravity
         .map((row) => List<int>.from(row))
@@ -799,6 +1207,143 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBreakSkillExecuteOverlay({
+    required Size boardSize,
+    required int rows,
+    required int columns,
+  }) {
+    final targetCell = _breakSkillTargetCell;
+    final targetValue = _breakSkillTargetValue;
+    if (_skillFxKind == _SkillFxKind.none || targetCell == null) {
+      return const SizedBox.shrink();
+    }
+
+    final targetCenter = _cellCenter(
+      cell: targetCell,
+      boardSize: boardSize,
+      rows: rows,
+      columns: columns,
+    );
+    final cellWidth = boardSize.width / columns;
+
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _skillFxController,
+          builder: (_, child) {
+            if (_skillFxKind == _SkillFxKind.breakTravel) {
+              final progress = Curves.easeInOutCubic.transform(
+                _skillFxController.value,
+              );
+              final current = Offset.lerp(
+                _breakSkillTravelStart,
+                targetCenter,
+                progress,
+              );
+              if (current == null) {
+                return const SizedBox.shrink();
+              }
+              final axeSize = cellWidth * 1.08;
+              return Stack(
+                children: <Widget>[
+                  Positioned(
+                    left: current.dx - (axeSize * 0.42),
+                    top: current.dy - (axeSize * 0.56),
+                    child: SizedBox(
+                      width: axeSize,
+                      height: axeSize,
+                      child: Gif(
+                        key: ValueKey<String>(
+                          'break_travel_${_skillFxSequence}_${targetCell.row}_${targetCell.column}',
+                        ),
+                        image: const AssetImage(
+                          AppAssets.linkNumberSkillBreakTravelLoopGif,
+                        ),
+                        autostart: Autostart.loop,
+                        useCache: true,
+                        fit: BoxFit.contain,
+                        placeholder: (_) => const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            if (_skillFxKind != _SkillFxKind.breakImpact) {
+              return const SizedBox.shrink();
+            }
+
+            final impactProgress = Curves.easeInCubic.transform(
+              _skillFxController.value,
+            );
+            final burstOpacity = impactProgress < 0.16
+                ? 0.0
+                : ((impactProgress - 0.16) / 0.84).clamp(0.0, 1.0);
+            final burstSize = cellWidth * 1.55;
+
+            return Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                if (targetValue != null &&
+                    AppAssets.supportsLinkNumberAnimatedBall(targetValue))
+                  Positioned(
+                    left: targetCenter.dx - (cellWidth * 0.5),
+                    top: targetCenter.dy - (cellWidth * 0.5),
+                    child: SizedBox(
+                      width: cellWidth,
+                      height: cellWidth,
+                      child: Gif(
+                        key: ValueKey<String>(
+                          'break_ball_destroy_${_skillFxSequence}_${targetCell.row}_${targetCell.column}',
+                        ),
+                        image: AssetImage(
+                          AppAssets.linkNumberBallDestroyingOutGif(targetValue),
+                        ),
+                        autostart: Autostart.once,
+                        useCache: true,
+                        fit: BoxFit.contain,
+                        placeholder: (_) => const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
+                if (impactProgress > 0.08)
+                  ColoredBox(
+                    color: AppColors.colorF39702.withValues(
+                      alpha: 0.12 * burstOpacity,
+                    ),
+                  ),
+                Positioned(
+                  left: targetCenter.dx - (burstSize / 2),
+                  top: targetCenter.dy - (burstSize / 2),
+                  child: Opacity(
+                    opacity: burstOpacity,
+                    child: SizedBox(
+                      width: burstSize,
+                      height: burstSize,
+                      child: Gif(
+                        key: ValueKey<String>(
+                          'break_impact_${_skillFxSequence}_${targetCell.row}_${targetCell.column}',
+                        ),
+                        image: const AssetImage(
+                          AppAssets.linkNumberSkillBreakExecutingGif,
+                        ),
+                        autostart: Autostart.once,
+                        useCache: true,
+                        fit: BoxFit.contain,
+                        placeholder: (_) => const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -1137,11 +1682,18 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     final gifPreloadProgress = _gifPreloader.progress.value;
     final shouldHideConnectionPath =
         _showLegacyChainBurstOverlay && _burstPath.isNotEmpty;
+    final highlightedPath = _releasePath.isNotEmpty
+        ? _releasePath
+        : snapshot.activePath;
     final visualPath = shouldHideConnectionPath
         ? const <LinkNumberCell>[]
-        : snapshot.activePath.isNotEmpty
-        ? snapshot.activePath
-        : _resolvingPath;
+        : highlightedPath;
+    final lineOpacity = shouldHideConnectionPath
+        ? 0.0
+        : _releasePath.isNotEmpty
+        ? (1 - Curves.easeOutCubic.transform(_releasePathLineController.value))
+              .clamp(0.0, 1.0)
+        : 1.0;
 
     return LayoutBuilder(
       builder: (_, constraints) {
@@ -1181,12 +1733,26 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
 
                     return GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTapDown: (details) =>
-                          widget.onCellTap(details.localPosition, boardSize),
-                      onPanStart: (details) =>
-                          widget.onPanStart(details.localPosition, boardSize),
-                      onPanUpdate: (details) =>
-                          widget.onPanUpdate(details.localPosition, boardSize),
+                      onTapDown: (details) => _handleBoardTapDown(
+                        details.localPosition,
+                        boardSize,
+                        rows: rows,
+                        columns: columns,
+                      ),
+                      onPanStart: (details) {
+                        if (_isBoardInputBlocked(snapshot) ||
+                            snapshot.selectedSkill != null) {
+                          return;
+                        }
+                        widget.onPanStart(details.localPosition, boardSize);
+                      },
+                      onPanUpdate: (details) {
+                        if (_isBoardInputBlocked(snapshot) ||
+                            snapshot.selectedSkill != null) {
+                          return;
+                        }
+                        widget.onPanUpdate(details.localPosition, boardSize);
+                      },
                       onPanEnd: (_) => _handlePanEnd(),
                       onPanCancel: _handlePanEnd,
                       child: Stack(
@@ -1204,87 +1770,120 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
                                 width: 2,
                               ),
                             ),
-                            child: AnimatedBuilder(
-                              animation: Listenable.merge(<Listenable>[
-                                _cellPopController,
-                                _pathResolveController,
-                                _pathFlowController,
-                              ]),
-                              builder: (_, child) {
-                                return Column(
-                                  children: List<Widget>.generate(rows, (row) {
-                                    return Expanded(
-                                      child: Row(
-                                        children: List<Widget>.generate(columns, (
-                                          column,
-                                        ) {
-                                          final cell = LinkNumberCell(
-                                            row: row,
-                                            column: column,
-                                          );
-                                          final isSwapAnchor =
-                                              snapshot.pendingSwapCell == cell;
-                                          final destroyProgress =
-                                              _destroyProgressForCell(cell);
-                                          final pathIndex = visualPath.indexOf(
-                                            cell,
-                                          );
-                                          final isInVisualPath = pathIndex >= 0;
-                                          final chainPulse =
-                                              snapshot.activePath.length >= 2 &&
-                                                  isInVisualPath
-                                              ? _chainPulse(pathIndex)
-                                              : 0.0;
-                                          final hiddenByDrop =
-                                              _pendingMergeChangedCells
-                                                  .contains(cell);
-                                          final tileValue =
-                                              snapshot.board[row][column];
-                                          return Expanded(
-                                            child: _CellTile(
-                                              value: tileValue,
-                                              selected: isInVisualPath,
-                                              isSwapAnchor: isSwapAnchor,
-                                              isPopping: _poppingCells.contains(
-                                                cell,
-                                              ),
-                                              chainPulse: chainPulse,
-                                              destroyProgress: destroyProgress,
-                                              scale: _tileScale(
-                                                cell: cell,
-                                                value: tileValue,
-                                                selected: isInVisualPath,
-                                                isSwapAnchor: isSwapAnchor,
-                                                destroyProgress:
-                                                    destroyProgress,
-                                                chainPulse: chainPulse,
-                                              ),
-                                              destroyingAnimationKey:
-                                                  ValueKey<String>(
-                                                    'destroy_${_pathResolveSequence}_${row}_$column',
-                                                  ),
-                                              hidden: hiddenByDrop,
-                                            ),
-                                          );
-                                        }),
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: <Widget>[
+                                IgnorePointer(
+                                  child: RepaintBoundary(
+                                    child: CustomPaint(
+                                      painter: _BoardGridPainter(
+                                        rows: rows,
+                                        columns: columns,
                                       ),
+                                    ),
+                                  ),
+                                ),
+                                IgnorePointer(
+                                  child: RepaintBoundary(
+                                    child: CustomPaint(
+                                      painter: _PathPainter(
+                                        path: visualPath,
+                                        board: snapshot.board,
+                                        rows: rows,
+                                        columns: columns,
+                                        lineOpacity: lineOpacity,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                AnimatedBuilder(
+                                  animation: Listenable.merge(<Listenable>[
+                                    _cellPopController,
+                                    _pathResolveController,
+                                    _pathFlowController,
+                                    _releasePathLineController,
+                                  ]),
+                                  builder: (_, child) {
+                                    return Column(
+                                      children: List<Widget>.generate(rows, (
+                                        row,
+                                      ) {
+                                        return Expanded(
+                                          child: Row(
+                                            children: List<Widget>.generate(
+                                              columns,
+                                              (column) {
+                                                final cell = LinkNumberCell(
+                                                  row: row,
+                                                  column: column,
+                                                );
+                                                final isSwapAnchor =
+                                                    snapshot.pendingSwapCell ==
+                                                    cell;
+                                                final destroyProgress =
+                                                    _destroyProgressForCell(
+                                                      cell,
+                                                    );
+                                                final pathIndex = visualPath
+                                                    .indexOf(cell);
+                                                final isInVisualPath =
+                                                    pathIndex >= 0;
+                                                final chainPulse =
+                                                    snapshot
+                                                                .activePath
+                                                                .length >=
+                                                            2 &&
+                                                        isInVisualPath
+                                                    ? _chainPulse(pathIndex)
+                                                    : 0.0;
+                                                final hiddenByDrop =
+                                                    _pendingMergeChangedCells
+                                                        .contains(cell);
+                                                final tileValue =
+                                                    snapshot.board[row][column];
+                                                return Expanded(
+                                                  child: _CellTile(
+                                                    value: tileValue,
+                                                    selected: isInVisualPath,
+                                                    isSwapAnchor: isSwapAnchor,
+                                                    isPopping: _poppingCells
+                                                        .contains(cell),
+                                                    chainPulse: chainPulse,
+                                                    destroyProgress:
+                                                        destroyProgress,
+                                                    scale: _tileScale(
+                                                      cell: cell,
+                                                      value: tileValue,
+                                                      selected: isInVisualPath,
+                                                      isSwapAnchor:
+                                                          isSwapAnchor,
+                                                      destroyProgress:
+                                                          destroyProgress,
+                                                      chainPulse: chainPulse,
+                                                    ),
+                                                    destroyingAnimationKey:
+                                                        ValueKey<String>(
+                                                          'destroy_${_pathResolveSequence}_${row}_$column',
+                                                        ),
+                                                    hidden: hiddenByDrop,
+                                                    showCellBorder: false,
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      }),
                                     );
-                                  }),
-                                );
-                              },
+                                  },
+                                ),
+                              ],
                             ),
                           ),
-                          IgnorePointer(
-                            child: RepaintBoundary(
-                              child: CustomPaint(
-                                painter: _PathPainter(
-                                  path: visualPath,
-                                  board: snapshot.board,
-                                  rows: rows,
-                                  columns: columns,
-                                ),
-                              ),
-                            ),
+                          _buildBreakSkillExecuteOverlay(
+                            boardSize: boardSize,
+                            rows: rows,
+                            columns: columns,
                           ),
                           _buildDropCascadeOverlay(
                             boardSize: boardSize,
@@ -1631,6 +2230,8 @@ class _AnimatedBallGif extends StatelessWidget {
   }
 }
 
+enum _SkillFxKind { none, breakTravel, breakImpact }
+
 class _DropTileMotion {
   const _DropTileMotion({
     required this.value,
@@ -1663,16 +2264,18 @@ class _PathPainter extends CustomPainter {
     required this.board,
     required this.rows,
     required this.columns,
+    required this.lineOpacity,
   });
 
   final List<LinkNumberCell> path;
   final List<List<int>> board;
   final int rows;
   final int columns;
+  final double lineOpacity;
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (path.length < 2) {
+    if (path.length < 2 || lineOpacity <= 0) {
       return;
     }
 
@@ -1693,7 +2296,7 @@ class _PathPainter extends CustomPainter {
       final startValue = _boardValueAt(board, path[index]);
       final startColor = _linkNumberColorForValue(startValue);
       final linePaint = Paint()
-        ..color = startColor.withValues(alpha: 0.92)
+        ..color = startColor.withValues(alpha: 0.92 * lineOpacity)
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..strokeWidth = 4.2;
@@ -1712,7 +2315,45 @@ class _PathPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _PathPainter oldDelegate) {
-    return oldDelegate.path != path || oldDelegate.board != board;
+    return oldDelegate.path != path ||
+        oldDelegate.board != board ||
+        oldDelegate.lineOpacity != lineOpacity;
+  }
+}
+
+class _BoardGridPainter extends CustomPainter {
+  const _BoardGridPainter({required this.rows, required this.columns});
+
+  final int rows;
+  final int columns;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (rows <= 0 || columns <= 0) {
+      return;
+    }
+
+    final cellWidth = size.width / columns;
+    final cellHeight = size.height / rows;
+    final gridPaint = Paint()
+      ..color = AppColors.colorF586AA6.withValues(alpha: 0.58)
+      ..strokeWidth = 0.8
+      ..style = PaintingStyle.stroke;
+
+    for (var column = 1; column < columns; column++) {
+      final x = column * cellWidth;
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+    }
+
+    for (var row = 1; row < rows; row++) {
+      final y = row * cellHeight;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BoardGridPainter oldDelegate) {
+    return oldDelegate.rows != rows || oldDelegate.columns != columns;
   }
 }
 
