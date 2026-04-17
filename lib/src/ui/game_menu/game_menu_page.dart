@@ -5,6 +5,7 @@ import 'package:flow_connection/src/extensions/int_extensions.dart';
 import 'package:flow_connection/src/locale/locale_key.dart';
 import 'package:flow_connection/src/ui/game_menu/components/game_menu_modal_test_button.dart';
 import 'package:flow_connection/src/ui/game_menu/components/game_menu_play_button.dart';
+import 'package:flow_connection/src/ui/game_menu/components/game_menu_play_v2_button.dart';
 import 'package:flow_connection/src/ui/game_menu/components/game_menu_preview_button.dart';
 import 'package:flow_connection/src/ui/game_menu/components/game_menu_top_badges.dart';
 import 'package:flow_connection/src/ui/game_menu/interactor/game_menu_controller.dart';
@@ -109,6 +110,10 @@ class GameMenuPage extends GetView<GameMenuController> {
                           ),
                           GameMenuPlayButton(
                             onTap: () => Get.toNamed(routeName),
+                          ),
+                          8.height,
+                          GameMenuPlayV2Button(
+                            onTap: () => Get.toNamed(AppPages.linkNumberV2),
                           ),
                           12.height,
                           GameMenuPreviewButton(

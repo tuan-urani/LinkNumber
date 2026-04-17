@@ -52,6 +52,7 @@ class LocaleKey {
   static const String gameMenuReward = 'game_menu_reward';
   static const String gameMenuLevel = 'game_menu_level';
   static const String gameMenuStars = 'game_menu_stars';
+  static const String gameMenuPlayV2 = 'game_menu_play_v2';
   static const String gameMenuPreviewAssets = 'game_menu_preview_assets';
   static const String gameMenuTestWinModal = 'game_menu_test_win_modal';
   static const String gameMenuTestLoseModal = 'game_menu_test_lose_modal';

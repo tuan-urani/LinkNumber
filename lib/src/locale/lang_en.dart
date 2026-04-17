@@ -52,6 +52,7 @@ final Map<String, String> enUs = <String, String>{
   LocaleKey.gameMenuReward: '+20',
   LocaleKey.gameMenuLevel: 'Level',
   LocaleKey.gameMenuStars: 'Stars',
+  LocaleKey.gameMenuPlayV2: 'PLAY V2',
   LocaleKey.gameMenuPreviewAssets: 'Preview assets',
   LocaleKey.gameMenuTestWinModal: 'Test win modal',
   LocaleKey.gameMenuTestLoseModal: 'Test lose modal',

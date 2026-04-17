@@ -40,6 +40,12 @@ class AppAssets {
       'assets/game/skills/link_number_skill_swap_selected_loop.gif';
   static const String linkNumberSkillSwapExecutingGif =
       'assets/game/skills/link_number_skill_swap_executing.gif';
+  static const String linkNumberV2CoreBallIdleLoopGif =
+      'gen-asset/assets/game/balls/gif/ball_core_idle_loop.gif';
+  static const String linkNumberV2CoreBallSelectedPathLoopGif =
+      'gen-asset/assets/game/balls/gif/ball_core_selected_path_loop.gif';
+  static const String linkNumberV2CoreBallDestroyingOutGif =
+      'gen-asset/assets/game/balls/gif/ball_core_destroying_out.gif';
 
   static const List<int> linkNumberAnimatedBallValues = <int>[
     2,

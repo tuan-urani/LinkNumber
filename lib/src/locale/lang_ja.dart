@@ -49,6 +49,7 @@ final Map<String, String> jaJp = <String, String>{
   LocaleKey.gameMenuReward: '+20',
   LocaleKey.gameMenuLevel: 'レベル',
   LocaleKey.gameMenuStars: 'スター',
+  LocaleKey.gameMenuPlayV2: 'V2でプレイ',
   LocaleKey.gameMenuPreviewAssets: 'アセット確認',
   LocaleKey.gameMenuTestWinModal: '勝利モーダル確認',
   LocaleKey.gameMenuTestLoseModal: '敗北モーダル確認',

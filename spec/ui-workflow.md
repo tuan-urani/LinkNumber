@@ -9,6 +9,7 @@ Features:
 - Splash routes to this menu screen as the first destination.
 - Displays only one game card (Link Number) with localized content.
 - Navigates to Link Number via GetX route.
+- Provides a dedicated `Play V2` CTA to open Link Number V2 for render-quality comparison.
 - Includes quick QA buttons to preview Link Number result modals (win/lose) directly from menu.
 
 ### 2. UI Structure
@@ -23,12 +24,44 @@ Features:
 2. After splash delay, app navigates to `GameMenuPage`.
 3. User taps the Link Number card.
 4. App pushes `LinkNumberPage`.
-5. User can tap `Test win modal` / `Test lose modal` to open in-place preview dialogs for result UI.
+5. User can tap `PLAY V2` to push `LinkNumberV2Page` without affecting the original Link Number route.
+6. User can tap `Test win modal` / `Test lose modal` to open in-place preview dialogs for result UI.
 
 ### 4. Key Dependencies
 - `GameMenuController`: source of menu item metadata (Link Number only).
 - `AppPages`: game menu route registration and Link Number route mapping.
 - `LocaleKey`, `lang_en.dart`, `lang_ja.dart`: menu localization keys and values.
+
+## Link Number V2
+**Path**: lib/src/ui/link_number_v2
+
+### 1. Description
+Goal: Provide a visual-comparison variant of Link Number where all ball states are rendered with Flutter widgets instead of GIF assets.
+Features:
+- Keeps the same gameplay rules, progress source, and board flow as Link Number.
+- Replaces ball rendering with Flutter stateful visuals for `idle`, `selected`, and `destroy`.
+- Removes board-level GIF preload gate so board can render immediately.
+
+### 2. UI Structure
+- Screen: `LinkNumberV2Page`
+- Components:
+- `LinkNumberBoard` (v2 module): board interactions + effects, but ball rendering delegated to `LinkNumberV2Ball`.
+- `LinkNumberV2Ball`: reusable ball renderer with three visual states (`idle`, `selected`, `destroy`).
+- `LinkNumberHeaderPanel` (v2 module): uses `LinkNumberV2Ball` for goal/current mini balls.
+
+### 3. User Flow & Logic
+1. User opens V2 from `PLAY V2` button in game menu.
+2. User drags/merges/uses skills with the same rules as base Link Number.
+3. During gameplay, ball visuals transition by state:
+- normal tile => `idle`
+- active path tile => `selected`
+- resolve/break destruction => `destroy`
+4. Merge timing uses non-GIF path in controller to keep animation pacing consistent with widget-based rendering.
+
+### 4. Key Dependencies
+- `LinkNumberEngine` (v2 module clone): game state transitions and rule validation.
+- `LinkNumberController` (v2 module): merge-delay orchestration with `hasAnimatedGif: false`.
+- `LinkNumberV2Ball`: centralized ball state rendering.
 
 ## Link Number
 **Path**: lib/src/ui/link_number

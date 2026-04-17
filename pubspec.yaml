@@ -92,6 +92,7 @@ flutter:
     - assets/game/effects/
     - assets/game/effects/explosion/
     - assets/game/skills/
+    - gen-asset/assets/game/balls/gif/
 
 
   # An image asset can refer to one or more resolution-specific "variants", see
