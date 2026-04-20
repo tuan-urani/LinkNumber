@@ -1,26 +1,30 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flow_connection/main.dart';
+import 'package:flow_connection/src/core/managers/game_progress_manager.dart';
+import 'package:flow_connection/src/ui/game_menu/components/game_menu_play_button.dart';
+import 'package:flow_connection/src/ui/game_menu/game_menu_page.dart';
+import 'package:flow_connection/src/ui/game_menu/interactor/game_menu_controller.dart';
+import 'package:flow_connection/src/utils/app_shared.dart';
 
 void main() {
-  testWidgets('Shows game menu after splash', (WidgetTester tester) async {
-    await tester.pumpWidget(const App());
+  setUp(() async {
+    Get.testMode = true;
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final preferences = await SharedPreferences.getInstance();
+    final manager = GameProgressManager(AppShared(preferences));
+    Get.put<GameProgressManager>(manager);
+    Get.put<GameMenuController>(GameMenuController());
+  });
 
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  tearDown(Get.reset);
 
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pump(const Duration(milliseconds: 300));
+  testWidgets('Shows main menu controls', (WidgetTester tester) async {
+    await tester.pumpWidget(const GetMaterialApp(home: GameMenuPage()));
+    await tester.pumpAndSettle();
 
-    expect(find.text('Link Number'), findsNWidgets(2));
-    expect(find.text('Love Dots Demo'), findsNothing);
-    expect(find.text('Rotate Maze Ball'), findsNothing);
+    expect(find.byType(GameMenuPlayButton), findsOneWidget);
+    expect(find.text('LOADING...'), findsNothing);
   });
 }

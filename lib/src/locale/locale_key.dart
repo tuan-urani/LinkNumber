@@ -22,6 +22,7 @@ class LocaleKey {
   static const String linkNumberModeGoalScore = 'link_number_mode_goal_score';
   static const String linkNumberCurrent = 'link_number_current';
   static const String linkNumberScore = 'link_number_score';
+  static const String linkNumberPoints = 'link_number_points';
   static const String linkNumberTarget = 'link_number_target';
   static const String linkNumberCoins = 'link_number_coins';
   static const String linkNumberRewardAd = 'link_number_reward_ad';
@@ -34,17 +35,30 @@ class LocaleKey {
   static const String linkNumberSkillTapSwapSecond =
       'link_number_skill_tap_swap_second';
   static const String linkNumberMoves = 'link_number_moves';
+  static const String linkNumberMovesLeft = 'link_number_moves_left';
+  static const String linkNumberShopTitle = 'link_number_shop_title';
+  static const String linkNumberShopRemoveAds = 'link_number_shop_remove_ads';
+  static const String linkNumberShopFree = 'link_number_shop_free';
   static const String linkNumberClearPath = 'link_number_clear_path';
   static const String linkNumberRestart = 'link_number_restart';
   static const String linkNumberHint = 'link_number_hint';
   static const String linkNumberWinTitle = 'link_number_win_title';
   static const String linkNumberWinBody = 'link_number_win_body';
+  static const String linkNumberLossOopsTitle = 'link_number_loss_oops_title';
+  static const String linkNumberLossWatchAdMoves =
+      'link_number_loss_watch_ad_moves';
   static const String linkNumberLoseTitle = 'link_number_lose_title';
   static const String linkNumberLoseBody = 'link_number_lose_body';
   static const String linkNumberRetryLevel = 'link_number_retry_level';
   static const String linkNumberNextLevel = 'link_number_next_level';
   static const String linkNumberPlayAgain = 'link_number_play_again';
+  static const String linkNumberTutorialTitle = 'link_number_tutorial_title';
+  static const String linkNumberTutorialBody = 'link_number_tutorial_body';
+  static const String linkNumberTutorialSkip = 'link_number_tutorial_skip';
+  static const String linkNumberReadyToPlay = 'link_number_ready_to_play';
   static const String splashLoading = 'splash_loading';
+  static const String splashPrivacyPolicy = 'splash_privacy_policy';
+  static const String splashTermsOfUse = 'splash_terms_of_use';
   static const String gameMenuHighestBlock = 'game_menu_highest_block';
   static const String gameMenuDaily = 'game_menu_daily';
   static const String gameMenuWheel = 'game_menu_wheel';
@@ -53,9 +67,11 @@ class LocaleKey {
   static const String gameMenuLevel = 'game_menu_level';
   static const String gameMenuStars = 'game_menu_stars';
   static const String gameMenuPlayV2 = 'game_menu_play_v2';
+  static const String gameMenuPlayV3 = 'game_menu_play_v3';
   static const String gameMenuPreviewAssets = 'game_menu_preview_assets';
   static const String gameMenuTestWinModal = 'game_menu_test_win_modal';
   static const String gameMenuTestLoseModal = 'game_menu_test_lose_modal';
+  static const String gameMenuTestShopModal = 'game_menu_test_shop_modal';
   static const String linkNumberAssetPreviewTitle =
       'link_number_asset_preview_title';
   static const String linkNumberAssetPreviewSubtitle =

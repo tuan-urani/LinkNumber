@@ -65,6 +65,9 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
         : AppColors.color667394;
 
     final BorderRadius borderRadius = AppDimensions.borderRadius;
+    final iconAssetPath = widget.pathIcon.isNotEmpty
+        ? widget.pathIcon
+        : AppAssets.iconsChevronDownSvg;
 
     return Container(
       width: double.infinity,
@@ -75,9 +78,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
         items: widget.items,
         onChanged: widget.onChanged,
         iconSize: 10,
-        icon: SvgPicture.asset(
-          widget.pathIcon ?? AppAssets.iconsChevronDownSvg,
-        ),
+        icon: SvgPicture.asset(iconAssetPath),
         decoration: InputDecoration(
           labelText: widget.label,
           labelStyle:

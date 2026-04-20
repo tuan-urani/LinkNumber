@@ -1,6 +1,6 @@
 {
-    "name": "flow_connection",
-    "short_name": "flow_connection",
+    "name": "Link Number - Mạch Số",
+    "short_name": "Link Number - Mạch Số",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

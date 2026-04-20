@@ -4,8 +4,11 @@ import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flow_connection/src/core/managers/game_progress_manager.dart';
+import 'package:flow_connection/src/ui/game_menu/components/game_menu_modal_test_button.dart';
 import 'package:flow_connection/src/ui/game_menu/components/game_menu_play_button.dart';
 import 'package:flow_connection/src/ui/game_menu/components/game_menu_play_v2_button.dart';
+import 'package:flow_connection/src/ui/game_menu/components/game_menu_play_v3_button.dart';
+import 'package:flow_connection/src/ui/game_menu/components/game_menu_preview_button.dart';
 import 'package:flow_connection/src/ui/game_menu/game_menu_page.dart';
 import 'package:flow_connection/src/ui/game_menu/interactor/game_menu_controller.dart';
 import 'package:flow_connection/src/utils/app_pages.dart';
@@ -34,18 +37,16 @@ void main() {
 
   tearDown(Get.reset);
 
-  testWidgets('game menu can open both link number routes', (tester) async {
+  testWidgets('game menu only shows play and opens link number v3', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       GetMaterialApp(
         home: const GameMenuPage(),
         getPages: <GetPage<dynamic>>[
           GetPage(
-            name: AppPages.linkNumber,
-            page: () => const _DummyRoutePage(label: 'link-number-v1'),
-          ),
-          GetPage(
-            name: AppPages.linkNumberV2,
-            page: () => const _DummyRoutePage(label: 'link-number-v2'),
+            name: AppPages.linkNumberV3,
+            page: () => const _DummyRoutePage(label: 'link-number-v3'),
           ),
         ],
       ),
@@ -53,17 +54,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(GameMenuPlayButton), findsOneWidget);
-    expect(find.byType(GameMenuPlayV2Button), findsOneWidget);
+    expect(find.byType(GameMenuPlayV2Button), findsNothing);
+    expect(find.byType(GameMenuPlayV3Button), findsNothing);
+    expect(find.byType(GameMenuPreviewButton), findsNothing);
+    expect(find.byType(GameMenuModalTestButton), findsNothing);
 
     await tester.tap(find.byType(GameMenuPlayButton));
     await tester.pumpAndSettle();
-    expect(find.text('link-number-v1'), findsOneWidget);
-
-    Get.back<void>();
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byType(GameMenuPlayV2Button));
-    await tester.pumpAndSettle();
-    expect(find.text('link-number-v2'), findsOneWidget);
+    expect(find.text('link-number-v3'), findsOneWidget);
   });
 }

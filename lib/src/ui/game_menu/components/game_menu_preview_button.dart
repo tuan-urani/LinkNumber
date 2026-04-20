@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -5,6 +7,7 @@ import 'package:flow_connection/src/extensions/int_extensions.dart';
 import 'package:flow_connection/src/locale/locale_key.dart';
 import 'package:flow_connection/src/utils/app_colors.dart';
 import 'package:flow_connection/src/utils/app_styles.dart';
+import 'package:flow_connection/src/utils/app_ui_sfx.dart';
 
 class GameMenuPreviewButton extends StatelessWidget {
   const GameMenuPreviewButton({super.key, required this.onTap});
@@ -16,7 +19,10 @@ class GameMenuPreviewButton extends StatelessWidget {
     return Material(
       color: AppColors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          unawaited(AppUiSfx.playButtonTap());
+          onTap();
+        },
         borderRadius: 14.borderRadiusAll,
         child: Ink(
           width: 176,

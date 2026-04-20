@@ -13,6 +13,12 @@ class AppShared {
       '${keyName}_keyLinkNumberCurrentLevel';
   static const String _keyLinkNumberCoins = '${keyName}_keyLinkNumberCoins';
   static const String _keyLinkNumberStars = '${keyName}_keyLinkNumberStars';
+  static const String _keyLinkNumberV3TutorialCompleted =
+      '${keyName}_keyLinkNumberV3TutorialCompleted';
+  static const String _keyLinkNumberV3GuidedTutorialCompleted =
+      '${keyName}_keyLinkNumberV3GuidedTutorialCompleted';
+  static const String _keyLinkNumberV3GuidedTutorialVersion =
+      '${keyName}_keyLinkNumberV3GuidedTutorialVersion';
 
   final SharedPreferences _prefs;
   final StreamController<String?> _tokenValueController =
@@ -59,6 +65,27 @@ class AppShared {
 
   int? getLinkNumberStars() => _prefs.getInt(_keyLinkNumberStars);
 
+  Future<void> setLinkNumberV3TutorialCompleted(bool completed) async {
+    await _prefs.setBool(_keyLinkNumberV3TutorialCompleted, completed);
+  }
+
+  bool getLinkNumberV3TutorialCompleted() =>
+      _prefs.getBool(_keyLinkNumberV3TutorialCompleted) ?? false;
+
+  Future<void> setLinkNumberV3GuidedTutorialCompleted(bool completed) async {
+    await _prefs.setBool(_keyLinkNumberV3GuidedTutorialCompleted, completed);
+  }
+
+  bool getLinkNumberV3GuidedTutorialCompleted() =>
+      _prefs.getBool(_keyLinkNumberV3GuidedTutorialCompleted) ?? false;
+
+  Future<void> setLinkNumberV3GuidedTutorialVersion(int version) async {
+    await _prefs.setInt(_keyLinkNumberV3GuidedTutorialVersion, version);
+  }
+
+  int getLinkNumberV3GuidedTutorialVersion() =>
+      _prefs.getInt(_keyLinkNumberV3GuidedTutorialVersion) ?? 0;
+
   Future<int> clear() async {
     await _prefs.remove(_keyFcmToken);
     await _prefs.remove(_keyTokenValue);
@@ -66,6 +93,9 @@ class AppShared {
     await _prefs.remove(_keyLinkNumberCurrentLevel);
     await _prefs.remove(_keyLinkNumberCoins);
     await _prefs.remove(_keyLinkNumberStars);
+    await _prefs.remove(_keyLinkNumberV3TutorialCompleted);
+    await _prefs.remove(_keyLinkNumberV3GuidedTutorialCompleted);
+    await _prefs.remove(_keyLinkNumberV3GuidedTutorialVersion);
     _tokenValueController.add(null);
     return 1;
   }

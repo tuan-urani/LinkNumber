@@ -9,7 +9,7 @@ Features:
 - Splash routes to this menu screen as the first destination.
 - Displays only one game card (Link Number) with localized content.
 - Navigates to Link Number via GetX route.
-- Provides a dedicated `Play V2` CTA to open Link Number V2 for render-quality comparison.
+- Provides dedicated `Play V2` and `Play V3` CTAs to open comparison variants without changing the base Link Number route.
 - Includes quick QA buttons to preview Link Number result modals (win/lose) directly from menu.
 
 ### 2. UI Structure
@@ -25,7 +25,8 @@ Features:
 3. User taps the Link Number card.
 4. App pushes `LinkNumberPage`.
 5. User can tap `PLAY V2` to push `LinkNumberV2Page` without affecting the original Link Number route.
-6. User can tap `Test win modal` / `Test lose modal` to open in-place preview dialogs for result UI.
+6. User can tap `PLAY V3` to push `LinkNumberV3Page` for tile-cell visual style validation.
+7. User can tap `Test win modal` / `Test lose modal` to open in-place preview dialogs for result UI.
 
 ### 4. Key Dependencies
 - `GameMenuController`: source of menu item metadata (Link Number only).
@@ -62,6 +63,36 @@ Features:
 - `LinkNumberEngine` (v2 module clone): game state transitions and rule validation.
 - `LinkNumberController` (v2 module): merge-delay orchestration with `hasAnimatedGif: false`.
 - `LinkNumberV2Ball`: centralized ball state rendering.
+
+## Link Number V3
+**Path**: lib/src/ui/link_number_v3
+
+### 1. Description
+Goal: Provide a board-skin variant where each gameplay value renders as a rounded tile cell (matching the reference style) instead of a ball.
+Features:
+- Keeps V2 gameplay logic and timing behavior unchanged.
+- Replaces ball visuals with Flutter-drawn tile cells in states `idle`, `selected`, `destroy`.
+- Applies the same tile style in board cells and goal/current mini previews in header.
+
+### 2. UI Structure
+- Screen: `LinkNumberV3Page`
+- Components:
+- `LinkNumberV3Tile`: tile renderer with gradient, border, highlight, and state transitions.
+- `LinkNumberBoard` (v3 module): uses `LinkNumberV3Tile` for normal, selected path, and destroy states.
+- `LinkNumberHeaderPanel` (v3 module): uses `LinkNumberV3Tile` for mini goal/current value visuals.
+
+### 3. User Flow & Logic
+1. User opens V3 from `PLAY V3` button in game menu.
+2. User interacts with board using the same merge/skill rules as base Link Number.
+3. Visual state transitions:
+- normal tile => `idle`
+- path-selected tile => `selected`
+- removing/destroying tile => `destroy`
+
+### 4. Key Dependencies
+- `LinkNumberEngine` (v3 module clone): gameplay state and transition logic.
+- `LinkNumberController` (v3 module clone): timing and user input orchestration.
+- `LinkNumberV3Tile`: centralized tile-cell renderer for V3.
 
 ## Link Number
 **Path**: lib/src/ui/link_number

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:flow_connection/src/extensions/int_extensions.dart';
 import 'package:flow_connection/src/utils/app_colors.dart';
 import 'package:flow_connection/src/utils/app_styles.dart';
+import 'package:flow_connection/src/utils/app_ui_sfx.dart';
 
 class GameMenuModalTestButton extends StatelessWidget {
   const GameMenuModalTestButton({
@@ -23,7 +26,10 @@ class GameMenuModalTestButton extends StatelessWidget {
     return Material(
       color: AppColors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          unawaited(AppUiSfx.playButtonTap());
+          onTap();
+        },
         borderRadius: 12.borderRadiusAll,
         child: Ink(
           width: 176,

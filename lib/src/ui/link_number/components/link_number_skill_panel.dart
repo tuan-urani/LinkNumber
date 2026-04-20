@@ -90,7 +90,6 @@ class _SkillInlineButton extends StatelessWidget {
     this.enlargeOnSelected = false,
     this.iconSizeMultiplier = 1.0,
     this.idleAutostart = Autostart.loop,
-    this.labelBelowGif = false,
     this.badgeTopOffset = 0,
     this.badgeRightOffset = 0,
     this.idleGifAssetPath,
@@ -107,7 +106,6 @@ class _SkillInlineButton extends StatelessWidget {
   final bool enlargeOnSelected;
   final double iconSizeMultiplier;
   final Autostart idleAutostart;
-  final bool labelBelowGif;
   final double badgeTopOffset;
   final double badgeRightOffset;
   final VoidCallback onTap;
@@ -123,11 +121,14 @@ class _SkillInlineButton extends StatelessWidget {
     final iconSize = enlargeOnSelected && selected
         ? scaledBaseSize * 1.12
         : scaledBaseSize;
-    final iconBadgeBoxWidth = (compact ? 70.0 : 80.0) +
+    final iconBadgeBoxWidth =
+        (compact ? 70.0 : 80.0) +
         ((iconSizeMultiplier - 1.0).clamp(0.0, 2.0) * 42.0);
-    final iconBadgeBoxHeight = (compact ? 42.0 : 46.0) +
+    final iconBadgeBoxHeight =
+        (compact ? 42.0 : 46.0) +
         ((iconSizeMultiplier - 1.0).clamp(0.0, 2.0) * 34.0);
-    final buttonHeight = (compact ? 46.0 : 50.0) +
+    final buttonHeight =
+        (compact ? 46.0 : 50.0) +
         ((iconSizeMultiplier - 1.0).clamp(0.0, 2.0) * 36.0);
     final gifAssetPath = selected && selectedGifAssetPath != null
         ? selectedGifAssetPath
@@ -168,57 +169,29 @@ class _SkillInlineButton extends StatelessWidget {
                       )
                     else
                       Icon(icon, color: AppColors.white, size: iconSize),
-                    if (labelBelowGif)
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: compact ? -8 : -9,
-                        child: Center(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: AppColors.color88CF66.withValues(alpha: 0.92),
-                              borderRadius: 16.borderRadiusAll,
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 1.5,
-                              ),
-                              child: Text(
-                                trailingLabel,
-                                style: AppStyles.bodySmall(
-                                  color: AppColors.white,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ),
+                    Positioned(
+                      right: (compact ? -2 : -4) + badgeRightOffset,
+                      top: (compact ? -1 : 0) + badgeTopOffset,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppColors.color88CF66.withValues(alpha: 0.92),
+                          borderRadius: 16.borderRadiusAll,
                         ),
-                      )
-                    else
-                      Positioned(
-                        right: (compact ? -2 : -4) + badgeRightOffset,
-                        top: (compact ? -1 : 0) + badgeTopOffset,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: AppColors.color88CF66.withValues(alpha: 0.92),
-                            borderRadius: 16.borderRadiusAll,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 1.5,
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 1.5,
-                            ),
-                            child: Text(
-                              trailingLabel,
-                              style: AppStyles.bodySmall(
-                                color: AppColors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
+                          child: Text(
+                            trailingLabel,
+                            style: AppStyles.bodySmall(
+                              color: AppColors.white,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
                       ),
+                    ),
                   ],
                 ),
               ),

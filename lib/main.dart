@@ -18,7 +18,7 @@ class App extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
-      initialRoute: AppPages.splash,
+      initialRoute: AppPages.gameMenu,
       getPages: AppPages.pages,
       translations: TranslationManager(),
       locale: TranslationManager.defaultLocale,

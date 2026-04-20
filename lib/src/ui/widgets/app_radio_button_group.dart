@@ -36,8 +36,6 @@ class AppRadioButtonGroup extends StatelessWidget {
                 width: 20,
                 child: Radio<String>(
                   value: option,
-                  groupValue: selectedOption,
-                  onChanged: onChanged,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   splashRadius: 20,
                   activeColor: activeColor ?? AppColors.primary,
@@ -68,18 +66,22 @@ class AppRadioButtonGroup extends StatelessWidget {
       );
     }).toList();
 
-    if (direction == Axis.vertical) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: radioButtons,
-      );
-    }
+    final child = direction == Axis.vertical
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: radioButtons,
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: radioButtons
+                .map((e) => Expanded(child: e))
+                .toList(growable: false),
+          );
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: radioButtons
-          .map((e) => Expanded(child: e))
-          .toList(growable: false),
+    return RadioGroup<String>(
+      groupValue: selectedOption,
+      onChanged: onChanged,
+      child: child,
     );
   }
 }

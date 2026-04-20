@@ -52,10 +52,12 @@ dependencies:
   smooth_page_indicator: ^2.0.1
   shared_preferences: ^2.5.5
   percent_indicator: ^4.2.2
+  audioplayers: ^6.0.0
   common_widget:
     git:
       url: https://github.com/tuan-urani/common_widget
       ref: main
+  google_mobile_ads: ^8.0.0
 
 dev_dependencies:
   flutter_test:
@@ -84,14 +86,19 @@ flutter:
 
   assets:
     - .env
+    - assets/tap_tutorial.svg
     - assets/coin.png
     - assets/current_level.png
+    - assets/main_menu.png
     - assets/main_slogan.png
+    - assets/music/
     - assets/game/balls/
     - assets/game/balls/gif/
+    - assets/game/backgrounds/
     - assets/game/effects/
     - assets/game/effects/explosion/
     - assets/game/skills/
+    - assets/game/board_pack/
     - gen-asset/assets/game/balls/gif/
 
 

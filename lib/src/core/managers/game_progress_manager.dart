@@ -1,4 +1,5 @@
 import 'package:flow_connection/src/utils/app_shared.dart';
+import 'package:get/get.dart';
 
 class GameProgressManager {
   GameProgressManager(this._appShared);
@@ -8,25 +9,28 @@ class GameProgressManager {
   static const int _defaultStars = 0;
 
   final AppShared _appShared;
+  final RxInt currentLevelRx = _defaultCurrentLevel.obs;
+  final RxInt coinsRx = _defaultCoins.obs;
+  final RxInt starsRx = _defaultStars.obs;
 
-  int _currentLevel = _defaultCurrentLevel;
-  int _coins = _defaultCoins;
-  int _stars = _defaultStars;
-
-  int get currentLevel => _currentLevel;
-  int get coins => _coins;
-  int get stars => _stars;
+  int get currentLevel => currentLevelRx.value;
+  int get coins => coinsRx.value;
+  int get stars => starsRx.value;
 
   Future<void> init() async {
     final savedLevel = _appShared.getLinkNumberCurrentLevel();
     final savedCoins = _appShared.getLinkNumberCoins();
     final savedStars = _appShared.getLinkNumberStars();
 
-    _currentLevel = savedLevel != null && savedLevel > 0
+    currentLevelRx.value = savedLevel != null && savedLevel > 0
         ? savedLevel
         : _defaultCurrentLevel;
-    _coins = savedCoins != null && savedCoins >= 0 ? savedCoins : _defaultCoins;
-    _stars = savedStars != null && savedStars >= 0 ? savedStars : _defaultStars;
+    coinsRx.value = savedCoins != null && savedCoins >= 0
+        ? savedCoins
+        : _defaultCoins;
+    starsRx.value = savedStars != null && savedStars >= 0
+        ? savedStars
+        : _defaultStars;
   }
 
   Future<void> saveProgress({
@@ -34,14 +38,16 @@ class GameProgressManager {
     required int coins,
     required int stars,
   }) async {
-    _currentLevel = currentLevel > 0 ? currentLevel : _defaultCurrentLevel;
-    _coins = coins >= 0 ? coins : _defaultCoins;
-    _stars = stars >= 0 ? stars : _defaultStars;
+    currentLevelRx.value = currentLevel > 0
+        ? currentLevel
+        : _defaultCurrentLevel;
+    coinsRx.value = coins >= 0 ? coins : _defaultCoins;
+    starsRx.value = stars >= 0 ? stars : _defaultStars;
 
     await Future.wait<void>(<Future<void>>[
-      _appShared.setLinkNumberCurrentLevel(_currentLevel),
-      _appShared.setLinkNumberCoins(_coins),
-      _appShared.setLinkNumberStars(_stars),
+      _appShared.setLinkNumberCurrentLevel(currentLevelRx.value),
+      _appShared.setLinkNumberCoins(coinsRx.value),
+      _appShared.setLinkNumberStars(starsRx.value),
     ]);
   }
 }

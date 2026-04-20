@@ -5,10 +5,11 @@ class CommonRouter {
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
       default:
-      // return GetPageRoute(
-      //   page: () => const NotFoundPage(),
-      //   settings: settings,
-      // );
+        // return GetPageRoute(
+        //   page: () => const NotFoundPage(),
+        //   settings: settings,
+        // );
+        return null;
     }
   }
 }
