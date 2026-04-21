@@ -18,7 +18,7 @@ class LinkNumberResultOverlay extends StatefulWidget {
     required this.onNextLevel,
     required this.onWatchRewardAd,
     required this.currentLevel,
-    required this.rewardPoints,
+    required this.rewardCoins,
     super.key,
   });
 
@@ -27,7 +27,7 @@ class LinkNumberResultOverlay extends StatefulWidget {
   final VoidCallback onNextLevel;
   final VoidCallback onWatchRewardAd;
   final int currentLevel;
-  final int rewardPoints;
+  final int rewardCoins;
 
   @override
   State<LinkNumberResultOverlay> createState() =>
@@ -169,7 +169,7 @@ class _LinkNumberResultOverlayState extends State<LinkNumberResultOverlay> {
                                 child: widget.hasWon
                                     ? _WinRewardSummary(
                                         currentLevel: widget.currentLevel,
-                                        rewardPoints: widget.rewardPoints,
+                                        rewardCoins: widget.rewardCoins,
                                       )
                                     : Center(
                                         child: FittedBox(
@@ -256,13 +256,13 @@ class _LinkNumberResultOverlayState extends State<LinkNumberResultOverlay> {
 class _WinRewardSummary extends StatelessWidget {
   const _WinRewardSummary({
     required this.currentLevel,
-    required this.rewardPoints,
+    required this.rewardCoins,
   });
 
   final int currentLevel;
-  final int rewardPoints;
+  final int rewardCoins;
 
-  String _formatPoints(int value) {
+  String _formatCoins(int value) {
     final normalized = value.abs().toString();
     final withSeparators = normalized.replaceAllMapped(
       RegExp(r'\B(?=(\d{3})+(?!\d))'),
@@ -304,7 +304,7 @@ class _WinRewardSummary extends StatelessWidget {
           children: <Widget>[
             Flexible(
               child: Text(
-                '+${_formatPoints(rewardPoints)}',
+                '+${_formatCoins(rewardCoins)}',
                 overflow: TextOverflow.ellipsis,
                 style:
                     AppStyles.h2(
@@ -324,7 +324,7 @@ class _WinRewardSummary extends StatelessWidget {
             ),
             8.width,
             Text(
-              LocaleKey.linkNumberPoints.tr.toUpperCase(),
+              LocaleKey.linkNumberCoins.tr.toUpperCase(),
               style: AppStyles.h4(
                 color: AppColors.colorFFE53E,
                 fontWeight: FontWeight.w900,

@@ -180,25 +180,30 @@ class _GoalTargetChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasDoubleDigits = value >= 10;
+    final tileSize = compact
+        ? (hasDoubleDigits ? 36.0 : 34.0)
+        : (hasDoubleDigits ? 40.0 : 38.0);
+    final chipMinWidth = compact ? 46.0 : 52.0;
+
     return Container(
+      constraints: BoxConstraints(minWidth: chipMinWidth),
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 4 : 6,
         vertical: compact ? 2 : 4,
       ),
-      decoration: BoxDecoration(
-        borderRadius: 10.borderRadiusAll,
-      ),
+      decoration: BoxDecoration(borderRadius: 10.borderRadiusAll),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           SizedBox(
-            width: compact ? 34 : 38,
-            height: compact ? 34 : 38,
+            width: tileSize,
+            height: tileSize,
             child: LinkNumberV3Tile(
               value: value,
               compactText: true,
               showBorder: false,
-              valueTextScale: 1.16,
+              valueTextScale: hasDoubleDigits ? 1.18 : 1.16,
               cornerRadius: compact ? 9 : 10,
             ),
           ),

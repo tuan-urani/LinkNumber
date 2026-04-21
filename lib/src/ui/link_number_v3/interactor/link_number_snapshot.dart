@@ -66,6 +66,7 @@ class LinkNumberSnapshot {
     required this.coins,
     required this.stars,
     required this.breakTileCost,
+    required this.swapTileCost,
     required this.swapCharges,
     required this.activePath,
     required this.activeValue,
@@ -87,6 +88,7 @@ class LinkNumberSnapshot {
   final int coins;
   final int stars;
   final int breakTileCost;
+  final int swapTileCost;
   final int swapCharges;
   final List<LinkNumberCell> activePath;
   final int? activeValue;
@@ -148,7 +150,7 @@ class LinkNumberSnapshot {
   bool get canUseBreakTile => !isGameOver && coins >= breakTileCost;
 
   bool get canUseSwapTile =>
-      !isGameOver && swapCharges > 0 && coins >= breakTileCost;
+      !isGameOver && swapCharges > 0 && coins >= swapTileCost;
 
   LinkNumberSnapshot copyWith({
     List<List<int>>? board,
@@ -161,6 +163,7 @@ class LinkNumberSnapshot {
     int? coins,
     int? stars,
     int? breakTileCost,
+    int? swapTileCost,
     int? swapCharges,
     List<LinkNumberCell>? activePath,
     Object? activeValue = _unset,
@@ -180,6 +183,7 @@ class LinkNumberSnapshot {
       coins: coins ?? this.coins,
       stars: stars ?? this.stars,
       breakTileCost: breakTileCost ?? this.breakTileCost,
+      swapTileCost: swapTileCost ?? this.swapTileCost,
       swapCharges: swapCharges ?? this.swapCharges,
       activePath: activePath ?? this.activePath,
       activeValue: identical(activeValue, _unset)

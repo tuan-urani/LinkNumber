@@ -21,7 +21,7 @@ class GameMenuPage extends GetView<GameMenuController> {
   void _showResultModalPreview({
     required bool hasWon,
     required int currentLevel,
-    required int rewardPoints,
+    required int rewardCoins,
   }) {
     if (Get.isDialogOpen == true) {
       return;
@@ -37,7 +37,7 @@ class GameMenuPage extends GetView<GameMenuController> {
             onNextLevel: () => Get.back<void>(),
             onWatchRewardAd: () => Get.back<void>(),
             currentLevel: currentLevel,
-            rewardPoints: rewardPoints,
+            rewardCoins: rewardCoins,
           ),
         ),
       ),
@@ -134,13 +134,13 @@ class GameMenuPage extends GetView<GameMenuController> {
                                             _showResultModalPreview(
                                               hasWon: true,
                                               currentLevel: level,
-                                              rewardPoints: 120,
+                                              rewardCoins: 50,
                                             ),
                                         onOpenLoseModal: () =>
                                             _showResultModalPreview(
                                               hasWon: false,
                                               currentLevel: level,
-                                              rewardPoints: 120,
+                                              rewardCoins: 50,
                                             ),
                                         onOpenShopModal: _showShopModalPreview,
                                       ),
@@ -150,13 +150,14 @@ class GameMenuPage extends GetView<GameMenuController> {
                         ),
                       ),
                     ),
-                    const Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Padding(
-                        padding: EdgeInsets.only(bottom: 12),
-                        child: GameMenuLegalSection(),
+                    if (!isSplashLoading)
+                      const Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Padding(
+                          padding: EdgeInsets.only(bottom: 12),
+                          child: GameMenuLegalSection(),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -198,6 +199,8 @@ class _GameMenuReadyState extends StatelessWidget {
     required this.onOpenShopModal,
   });
 
+  static const bool _showModalTestButtons = false;
+
   final int level;
   final VoidCallback onOpenWinModal;
   final VoidCallback onOpenLoseModal;
@@ -211,27 +214,29 @@ class _GameMenuReadyState extends StatelessWidget {
         SizedBox(width: 196, child: _GameMenuLevelCard(level: level)),
         34.height,
         GameMenuPlayButton(onTap: () => Get.toNamed(AppPages.linkNumberV3)),
-        12.height,
-        GameMenuModalTestButton(
-          label: LocaleKey.gameMenuTestWinModal.tr,
-          onTap: onOpenWinModal,
-          topColor: AppColors.color14B8A6,
-          bottomColor: AppColors.color88CF66,
-        ),
-        8.height,
-        GameMenuModalTestButton(
-          label: LocaleKey.gameMenuTestLoseModal.tr,
-          onTap: onOpenLoseModal,
-          topColor: AppColors.colorFF5B42,
-          bottomColor: AppColors.colorEF4056,
-        ),
-        8.height,
-        GameMenuModalTestButton(
-          label: LocaleKey.gameMenuTestShopModal.tr,
-          onTap: onOpenShopModal,
-          topColor: AppColors.color18A9FF,
-          bottomColor: AppColors.color0095FF,
-        ),
+        if (_showModalTestButtons) ...<Widget>[
+          12.height,
+          GameMenuModalTestButton(
+            label: LocaleKey.gameMenuTestWinModal.tr,
+            onTap: onOpenWinModal,
+            topColor: AppColors.color14B8A6,
+            bottomColor: AppColors.color88CF66,
+          ),
+          8.height,
+          GameMenuModalTestButton(
+            label: LocaleKey.gameMenuTestLoseModal.tr,
+            onTap: onOpenLoseModal,
+            topColor: AppColors.colorFF5B42,
+            bottomColor: AppColors.colorEF4056,
+          ),
+          8.height,
+          GameMenuModalTestButton(
+            label: LocaleKey.gameMenuTestShopModal.tr,
+            onTap: onOpenShopModal,
+            topColor: AppColors.color18A9FF,
+            bottomColor: AppColors.color0095FF,
+          ),
+        ],
       ],
     );
   }

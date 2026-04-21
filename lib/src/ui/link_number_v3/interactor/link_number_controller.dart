@@ -92,6 +92,7 @@ class LinkNumberController extends GetxController {
   bool get isInteractiveTutorialActive => _isInteractiveTutorialActive.value;
   bool get showReadyToPlayFx => _showReadyToPlayFx.value;
   bool get shouldReserveAdBannerSpace => _admobManager.isAvailable;
+  int get levelWinRewardCoins => LinkNumberEngine.levelWinRewardCoins;
 
   _TutorialStage get _currentTutorialStage {
     final index = _tutorialStageIndex.value.clamp(
@@ -334,6 +335,7 @@ class LinkNumberController extends GetxController {
       coins: base.coins,
       stars: base.stars,
       breakTileCost: base.breakTileCost,
+      swapTileCost: base.swapTileCost,
       swapCharges: base.swapCharges,
       activePath: activePath ?? const <LinkNumberCell>[],
       activeValue: activeValue,

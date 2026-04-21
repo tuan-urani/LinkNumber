@@ -61,7 +61,7 @@ class LinkNumberHudPanel extends StatelessWidget {
             _SkillButton(
               icon: Icons.swap_horiz_rounded,
               title: LocaleKey.linkNumberSkillSwapTiles.tr,
-              trailingLabel: '${snapshot.swapCharges}',
+              trailingLabel: '${snapshot.swapTileCost}',
               selected: snapshot.selectedSkill == LinkNumberSkillType.swapTiles,
               enabled: snapshot.canUseSwapTile,
               compact: compact,

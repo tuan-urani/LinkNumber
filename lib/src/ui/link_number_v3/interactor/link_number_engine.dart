@@ -28,9 +28,10 @@ class LinkNumberEngine {
 
   static const int _minPlayablePairs = 4;
   static const int _startingSwapCharges = 100;
-  static const int _breakTileCost = 200;
+  static const int _breakTileCost = 100;
+  static const int _swapTileCost = 40;
   static const int _rewardAdCoins = 200;
-  static const int _levelWinRewardCoins = 50;
+  static const int levelWinRewardCoins = 50;
 
   static const Map<int, double> _spawnWeightsStage1 = <int, double>{
     2: 40,
@@ -266,7 +267,7 @@ class LinkNumberEngine {
 
     _recordLevelOutcome(won: true, mode: _snapshot.goalMode);
     _stars += 1;
-    _coins += _levelWinRewardCoins;
+    _coins += levelWinRewardCoins;
     _currentLevel += 1;
 
     _snapshot = _buildSnapshotForLevel(
@@ -619,7 +620,7 @@ class LinkNumberEngine {
     if (first != second) {
       board[pendingCell.row][pendingCell.column] = second;
       board[cell.row][cell.column] = first;
-      _coins = math.max(0, _coins - _snapshot.breakTileCost);
+      _coins = math.max(0, _coins - _snapshot.swapTileCost);
       _swapCharges = math.max(0, _swapCharges - 1);
     }
 
@@ -738,6 +739,7 @@ class LinkNumberEngine {
       coins: _coins,
       stars: _stars,
       breakTileCost: _breakTileCost,
+      swapTileCost: _swapTileCost,
       swapCharges: _swapCharges,
       activePath: const <LinkNumberCell>[],
       activeValue: null,

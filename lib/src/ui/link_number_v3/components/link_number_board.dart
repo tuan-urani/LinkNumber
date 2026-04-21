@@ -43,6 +43,7 @@ class LinkNumberBoard extends StatefulWidget {
     required this.onRetry,
     required this.onNextLevel,
     required this.onWatchRewardAd,
+    required this.winRewardCoins,
     this.tutorialFocusCell,
     this.enableDropCascade = true,
     this.showResultOverlay = true,
@@ -57,6 +58,7 @@ class LinkNumberBoard extends StatefulWidget {
   final VoidCallback onRetry;
   final VoidCallback onNextLevel;
   final VoidCallback onWatchRewardAd;
+  final int winRewardCoins;
   final LinkNumberCell? tutorialFocusCell;
   final bool enableDropCascade;
   final bool showResultOverlay;
@@ -2192,7 +2194,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
                           LinkNumberResultOverlay(
                             hasWon: snapshot.hasWon,
                             currentLevel: snapshot.currentLevel,
-                            rewardPoints: snapshot.score,
+                            rewardCoins: widget.winRewardCoins,
                             onRetry: widget.onRetry,
                             onNextLevel: widget.onNextLevel,
                             onWatchRewardAd: widget.onWatchRewardAd,

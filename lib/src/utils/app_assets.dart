@@ -2,6 +2,7 @@ class AppAssets {
   AppAssets._();
 
   static const String tapTutorialSvg = 'assets/tap_tutorial.svg';
+  static const String linkNumberSkillHammerSvg = 'assets/hammer.svg';
   static const String gameMenuCoinPng = 'assets/coin.png';
   static const String gameMenuCurrentLevelPng = 'assets/current_level.png';
   static const String gameMenuMainMenuPng = 'assets/main_menu.png';

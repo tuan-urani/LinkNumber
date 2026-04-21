@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:flow_connection/src/extensions/int_extensions.dart';
 import 'package:flow_connection/src/ui/link_number_v3/interactor/link_number_snapshot.dart';
@@ -57,17 +59,16 @@ class LinkNumberSkillPanel extends StatelessWidget {
           selected: snapshot.selectedSkill == LinkNumberSkillType.swapTiles,
           onTap: onToggleSwapTiles,
           enabled: snapshot.canUseSwapTile,
-          badgeValue: null,
-          showPlayBadge: true,
+          badgeValue: snapshot.swapTileCost,
         ),
         SizedBox(width: gap),
         _RoundSkillButton(
           compact: compact,
-          icon: Icons.handyman_rounded,
+          iconAssetPath: AppAssets.linkNumberSkillHammerSvg,
           selected: snapshot.selectedSkill == LinkNumberSkillType.breakTile,
           onTap: onToggleBreakTile,
           enabled: snapshot.canUseBreakTile,
-          badgeValue: snapshot.swapCharges,
+          badgeValue: snapshot.breakTileCost,
         ),
         SizedBox(width: compact ? 10 : 12),
         _BottomCoinCard(
@@ -124,11 +125,11 @@ class _BottomCoinCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final height = compact ? 40.0 : 46.0;
+    final height = compact ? 46.0 : 52.0;
     final width = compact ? 112.0 : 124.0;
-    final coinSize = compact ? 18.0 : 20.0;
+    final coinSize = compact ? 20.0 : 22.0;
     final displayCoins = _formatCoins(coins);
-    final plusButtonSize = compact ? 22.0 : 24.0;
+    final plusButtonSize = compact ? 24.0 : 26.0;
 
     return Container(
       width: width,
@@ -150,6 +151,7 @@ class _BottomCoinCard extends StatelessWidget {
         ),
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           SizedBox(
             width: coinSize,
@@ -157,27 +159,24 @@ class _BottomCoinCard extends StatelessWidget {
             child: Image.asset(AppAssets.gameMenuCoinPng, fit: BoxFit.fill),
           ),
           (compact ? 6 : 8).width,
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerRight,
-                child: Text(
-                  displayCoins,
-                  maxLines: 1,
-                  style:
-                      (compact
-                              ? AppStyles.h4(
-                                  color: AppColors.white,
-                                  fontWeight: FontWeight.w800,
-                                )
-                              : AppStyles.h3(
-                                  color: AppColors.white,
-                                  fontWeight: FontWeight.w800,
-                                ))
-                          .copyWith(height: 1),
-                ),
+          Flexible(
+            fit: FlexFit.loose,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                displayCoins,
+                maxLines: 1,
+                style:
+                    (compact
+                            ? AppStyles.h4(
+                                color: AppColors.white,
+                                fontWeight: FontWeight.w800,
+                              )
+                            : AppStyles.h3(
+                                color: AppColors.white,
+                                fontWeight: FontWeight.w800,
+                              ))
+                        .copyWith(height: 1),
               ),
             ),
           ),
@@ -221,21 +220,21 @@ class _BottomCoinCard extends StatelessWidget {
 class _RoundSkillButton extends StatelessWidget {
   const _RoundSkillButton({
     required this.compact,
-    required this.icon,
+    this.icon,
+    this.iconAssetPath,
     required this.selected,
     required this.onTap,
     required this.enabled,
     this.badgeValue,
-    this.showPlayBadge = false,
-  });
+  }) : assert(icon != null || iconAssetPath != null);
 
   final bool compact;
-  final IconData icon;
+  final IconData? icon;
+  final String? iconAssetPath;
   final bool selected;
   final VoidCallback onTap;
   final bool enabled;
   final int? badgeValue;
-  final bool showPlayBadge;
 
   @override
   Widget build(BuildContext context) {
@@ -281,35 +280,43 @@ class _RoundSkillButton extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Icon(icon, color: AppColors.white, size: iconSize),
+                  child: iconAssetPath != null
+                      ? Padding(
+                          padding: EdgeInsets.all(compact ? 12 : 13),
+                          child: SvgPicture.asset(
+                            iconAssetPath!,
+                            fit: BoxFit.contain,
+                            colorFilter: const ColorFilter.mode(
+                              AppColors.white,
+                              BlendMode.srcIn,
+                            ),
+                          ),
+                        )
+                      : Icon(icon, color: AppColors.white, size: iconSize),
                 ),
               ),
-              if (showPlayBadge)
-                Positioned(
-                  right: -2,
-                  top: -2,
-                  child: _BadgeCircle(
-                    compact: compact,
-                    child: Icon(
-                      Icons.play_arrow_rounded,
-                      color: AppColors.white,
-                      size: compact ? 12 : 13,
-                    ),
-                  ),
-                ),
               if (badgeValue != null)
                 Positioned(
                   right: -2,
                   top: -2,
-                  child: _BadgeCircle(
-                    compact: compact,
-                    child: Text(
-                      '$badgeValue',
-                      style: AppStyles.caption(
-                        color: AppColors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                  child: Builder(
+                    builder: (context) {
+                      final badgeLabel = '$badgeValue';
+                      final minWidth = badgeLabel.length >= 3
+                          ? (compact ? 28.0 : 30.0)
+                          : null;
+                      return _BadgeCircle(
+                        compact: compact,
+                        minWidth: minWidth,
+                        child: Text(
+                          badgeLabel,
+                          style: AppStyles.caption(
+                            color: AppColors.white,
+                            fontWeight: FontWeight.w800,
+                          ).copyWith(height: 1),
+                        ),
+                      );
+                    },
                   ),
                 ),
             ],
@@ -321,26 +328,35 @@ class _RoundSkillButton extends StatelessWidget {
 }
 
 class _BadgeCircle extends StatelessWidget {
-  const _BadgeCircle({required this.compact, required this.child});
+  const _BadgeCircle({
+    required this.compact,
+    required this.child,
+    this.minWidth,
+  });
 
   final bool compact;
   final Widget child;
+  final double? minWidth;
 
   @override
   Widget build(BuildContext context) {
     final size = compact ? 20.0 : 22.0;
+    final width = math.max(size, minWidth ?? size);
     return Container(
-      width: size,
+      width: width,
       height: size,
+      padding: EdgeInsets.symmetric(horizontal: compact ? 4 : 5),
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
         color: AppColors.error,
+        borderRadius: BorderRadius.circular(size / 2),
         border: Border.all(
           color: AppColors.white.withValues(alpha: 0.9),
           width: 1.2,
         ),
       ),
-      child: Center(child: child),
+      child: Center(
+        child: FittedBox(fit: BoxFit.scaleDown, child: child),
+      ),
     );
   }
 }
@@ -409,19 +425,27 @@ class _LevelProgressBar extends StatelessWidget {
               ),
             ),
             Center(
-              child: Text(
-                'LEVEL $level',
-                style:
-                    (compact
-                            ? AppStyles.h4(
-                                color: AppColors.white,
-                                fontWeight: FontWeight.w800,
-                              )
-                            : AppStyles.h3(
-                                color: AppColors.white,
-                                fontWeight: FontWeight.w800,
-                              ))
-                        .copyWith(height: 1),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'LEVEL $level',
+                    maxLines: 1,
+                    softWrap: false,
+                    style:
+                        (compact
+                                ? AppStyles.h4(
+                                    color: AppColors.white,
+                                    fontWeight: FontWeight.w800,
+                                  )
+                                : AppStyles.h3(
+                                    color: AppColors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ))
+                            .copyWith(height: 1),
+                  ),
+                ),
               ),
             ),
           ],

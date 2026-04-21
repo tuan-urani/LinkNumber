@@ -113,6 +113,7 @@ class LinkNumberV3Page extends GetView<LinkNumberController> {
                             snapshot: snapshot,
                             tutorialFocusCell: tutorialFocusCell,
                             enableDropCascade: !isTutorialActive,
+                            winRewardCoins: controller.levelWinRewardCoins,
                           ),
                         ),
                         12.height,
@@ -330,12 +331,14 @@ class _BoardArea extends StatelessWidget {
     required this.snapshot,
     required this.tutorialFocusCell,
     required this.enableDropCascade,
+    required this.winRewardCoins,
   });
 
   final LinkNumberController controller;
   final LinkNumberSnapshot snapshot;
   final LinkNumberCell? tutorialFocusCell;
   final bool enableDropCascade;
+  final int winRewardCoins;
 
   @override
   Widget build(BuildContext context) {
@@ -382,6 +385,7 @@ class _BoardArea extends StatelessWidget {
               : controller.restartLevel,
           onNextLevel: controller.nextLevel,
           onWatchRewardAd: controller.continueWithRewardAdMoves,
+          winRewardCoins: winRewardCoins,
         ),
       ),
     );

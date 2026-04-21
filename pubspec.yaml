@@ -86,6 +86,7 @@ flutter:
 
   assets:
     - .env
+    - assets/hammer.svg
     - assets/tap_tutorial.svg
     - assets/coin.png
     - assets/current_level.png
