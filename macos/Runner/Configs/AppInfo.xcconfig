@@ -8,7 +8,7 @@
 PRODUCT_NAME = flow_connection
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.urani.flowconnection.flowConnection
+PRODUCT_BUNDLE_IDENTIFIER = com.urani.flowconnection
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 com.urani.flowconnection. All rights reserved.

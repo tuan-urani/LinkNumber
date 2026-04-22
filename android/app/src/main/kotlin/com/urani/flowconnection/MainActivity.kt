@@ -1,4 +1,4 @@
-package com.urani.flowconnection.flow_connection
+package com.urani.flowconnection
 
 import io.flutter.embedding.android.FlutterActivity
 

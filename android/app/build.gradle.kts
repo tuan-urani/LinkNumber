@@ -26,7 +26,7 @@ plugins {
 }
 
 android {
-    namespace = "com.urani.flowconnection.flow_connection"
+    namespace = "com.urani.flowconnection"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -40,7 +40,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.urani.flowconnection.flow_connection"
+        applicationId = "com.urani.flowconnection"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
