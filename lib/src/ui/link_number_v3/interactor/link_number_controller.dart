@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:flow_connection/src/core/managers/admob_manager.dart';
 import 'package:flow_connection/src/core/managers/game_progress_manager.dart';
 import 'package:flow_connection/src/utils/app_shared.dart';
+import 'package:flow_connection/src/utils/app_ui_sfx.dart';
 
 import 'link_number_engine.dart';
 import 'link_number_merge_timing.dart';
@@ -607,6 +608,7 @@ class LinkNumberController extends GetxController {
   void _showFeverTriggerFxForDuration() {
     final sequence = ++_feverTriggerFxSequence;
     _showFeverTriggerFx.value = true;
+    unawaited(AppUiSfx.playFeverTrigger());
     unawaited(
       Future<void>.delayed(_feverTriggerFxDuration, () {
         if (isClosed || sequence != _feverTriggerFxSequence) {

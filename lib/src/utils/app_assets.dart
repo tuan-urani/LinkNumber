@@ -11,6 +11,7 @@ class AppAssets {
   static const String linkNumberPopCellSfxMp3 = 'assets/music/pop_cell.mp3';
   static const String linkNumberSuccessSfxMp3 = 'assets/music/success.mp3';
   static const String linkNumberLossSfxMp3 = 'assets/music/loss.mp3';
+  static const String linkNumberFeverSfxMp3 = 'assets/music/fever.mp3';
   static const String numberConnectMenuCleanBackgroundGrayPng =
       'assets/game/backgrounds/number_connect_menu_clean_background_gray.png';
   static const String boardGameTableBackgroundPng =

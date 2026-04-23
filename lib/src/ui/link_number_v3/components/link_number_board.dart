@@ -84,6 +84,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
   static const Duration _tilePopDuration = Duration(milliseconds: 340);
   static const Duration _tilePopDelayAfterMerge = Duration(milliseconds: 190);
   static const Duration _selectedSfxMaxDuration = Duration(milliseconds: 260);
+  static const Duration _selectionHapticInterval = Duration(milliseconds: 70);
   static const double _defaultBurstStepFraction = 0.085;
   static const double _defaultBurstWindowFraction = 0.56;
   static const int _mergeBurstColumns = 6;
@@ -105,7 +106,8 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
 
   Set<LinkNumberCell> _poppingCells = <LinkNumberCell>{};
   LinkNumberCell? _mergeCenterCell;
-  int _mergeScoreGain = 0;
+  int _mergeFeedbackValue = 0;
+  _MergeFeedbackKind _mergeFeedbackKind = _MergeFeedbackKind.score;
   int _tilePopSequence = 0;
   int _pathResolveSequence = 0;
   List<LinkNumberCell> _releasePath = const <LinkNumberCell>[];
@@ -130,6 +132,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
   LinkNumberCell? _swapSecondCell;
   int? _swapFirstValue;
   int? _swapSecondValue;
+  DateTime? _lastSelectionHapticAt;
 
   @override
   void initState() {
@@ -235,7 +238,8 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
 
     setState(() {
       _mergeCenterCell = null;
-      _mergeScoreGain = 0;
+      _mergeFeedbackValue = 0;
+      _mergeFeedbackKind = _MergeFeedbackKind.score;
       _burstPath = const <LinkNumberCell>[];
       _burstPathValues = const <int>[];
       if (!_isDropCascadeRunning && _dropMotions.isEmpty) {
@@ -670,6 +674,16 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
 
     if (isValidMergeTransition) {
       final scoreGain = newSnapshot.score - oldSnapshot.score;
+      final goalProgressGain = _resolveGoalProgressGain(
+        oldSnapshot: oldSnapshot,
+        newSnapshot: newSnapshot,
+      );
+      final chainGain = math.max(1, oldSnapshot.activePath.length - 1);
+      final (feedbackKind, feedbackValue) = scoreGain > 0
+          ? (_MergeFeedbackKind.score, scoreGain)
+          : goalProgressGain > 0
+          ? (_MergeFeedbackKind.progress, goalProgressGain)
+          : (_MergeFeedbackKind.chain, chainGain);
       final mergeAnchorCell = oldSnapshot.activePath.last;
       final dropMotions = widget.enableDropCascade
           ? _buildDropMotions(
@@ -713,14 +727,17 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
         _releasePath = const <LinkNumberCell>[];
         _resolvingPath = const <LinkNumberCell>[];
         _pendingMergeChangedCells = maskedChangedCells;
-        if (scoreGain > 0) {
+        if (feedbackValue > 0) {
           _mergeCenterCell = mergeAnchorCell;
-          _mergeScoreGain = scoreGain;
+          _mergeFeedbackValue = feedbackValue;
+          _mergeFeedbackKind = feedbackKind;
         } else {
           _mergeCenterCell = null;
-          _mergeScoreGain = 0;
+          _mergeFeedbackValue = 0;
+          _mergeFeedbackKind = _MergeFeedbackKind.score;
         }
       });
+      _mergeBurstController.forward(from: 0);
       _releasePathLineController.stop();
       if (dropMotions.isNotEmpty) {
         _startDropCascade(
@@ -755,7 +772,8 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
         _resolvingPath = const <LinkNumberCell>[];
         _pendingMergeChangedCells = maskedChangedCells;
         _mergeCenterCell = null;
-        _mergeScoreGain = 0;
+        _mergeFeedbackValue = 0;
+        _mergeFeedbackKind = _MergeFeedbackKind.score;
       });
       _releasePathLineController.stop();
       if (dropMotions.isNotEmpty) {
@@ -782,7 +800,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
 
     if (newSnapshot.currentLevel != oldSnapshot.currentLevel &&
         (_mergeCenterCell != null ||
-            _mergeScoreGain > 0 ||
+            _mergeFeedbackValue > 0 ||
             _burstPath.isNotEmpty ||
             _dropMotions.isNotEmpty ||
             _resolvingPath.isNotEmpty ||
@@ -799,7 +817,8 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
       _swapFxController.stop();
       setState(() {
         _mergeCenterCell = null;
-        _mergeScoreGain = 0;
+        _mergeFeedbackValue = 0;
+        _mergeFeedbackKind = _MergeFeedbackKind.score;
         _burstPath = const <LinkNumberCell>[];
         _burstPathValues = const <int>[];
         _burstStepFraction = _defaultBurstStepFraction;
@@ -836,7 +855,18 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
       return;
     }
     unawaited(_playSelectedSfx());
-    HapticFeedback.selectionClick();
+    _playSelectionHaptic();
+  }
+
+  void _playSelectionHaptic() {
+    final now = DateTime.now();
+    final lastSelectionHapticAt = _lastSelectionHapticAt;
+    if (lastSelectionHapticAt != null &&
+        now.difference(lastSelectionHapticAt) < _selectionHapticInterval) {
+      return;
+    }
+    _lastSelectionHapticAt = now;
+    HapticFeedback.heavyImpact();
   }
 
   Future<void> _playSelectedSfx() async {
@@ -862,6 +892,11 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
 
   void _playMergeDestroySfx({required int destroyedCount}) {
     unawaited(_playSinglePopCellSfx());
+    if (destroyedCount >= 2) {
+      HapticFeedback.vibrate();
+      return;
+    }
+    HapticFeedback.heavyImpact();
   }
 
   Future<void> _playSinglePopCellSfx() async {
@@ -933,7 +968,8 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
       _burstStepFraction = burstTiming.stepFraction;
       _burstWindowFraction = burstTiming.windowFraction;
       _mergeCenterCell = null;
-      _mergeScoreGain = 0;
+      _mergeFeedbackValue = 0;
+      _mergeFeedbackKind = _MergeFeedbackKind.score;
     });
     _mergeBurstController.forward(from: 0);
   }
@@ -1263,6 +1299,47 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
       stepFraction: stepDelayMs / totalDurationMs,
       windowFraction: localWindowMs / totalDurationMs,
     );
+  }
+
+  int _resolveGoalProgressGain({
+    required LinkNumberSnapshot oldSnapshot,
+    required LinkNumberSnapshot newSnapshot,
+  }) {
+    if (!oldSnapshot.isGoalCountMode || !newSnapshot.isGoalCountMode) {
+      return 0;
+    }
+
+    final oldRemainingByValue = <int, int>{
+      for (final target in oldSnapshot.goalTargets)
+        target.value: target.remaining,
+    };
+    int gained = 0;
+
+    for (final target in newSnapshot.goalTargets) {
+      final oldRemaining = oldRemainingByValue[target.value];
+      if (oldRemaining == null) {
+        continue;
+      }
+      gained += math.max(0, oldRemaining - target.remaining);
+    }
+
+    return gained;
+  }
+
+  double _resolveMergeBoardScale() {
+    if (_mergeCenterCell == null || !_mergeBurstController.isAnimating) {
+      return 1.0;
+    }
+
+    final progress = _mergeBurstController.value.clamp(0.0, 1.0);
+    final compress = ((0.11 - progress) / 0.11).clamp(0.0, 1.0);
+    final expand = (1 - ((progress - 0.18).abs() / 0.2)).clamp(0.0, 1.0);
+    final settle = ((progress - 0.36) / 0.24).clamp(0.0, 1.0);
+
+    return 1 -
+        (0.01 * Curves.easeOut.transform(compress)) +
+        (0.014 * Curves.easeOut.transform(expand)) -
+        (0.004 * Curves.easeOut.transform(settle));
   }
 
   double _tileScale({
@@ -1918,15 +1995,115 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     );
   }
 
+  Widget _buildMergeImpactPulseOverlay({
+    required Size boardSize,
+    required int rows,
+    required int columns,
+  }) {
+    final centerCell = _mergeCenterCell;
+    if (centerCell == null) {
+      return const SizedBox.shrink();
+    }
+
+    final baseSize = math.min(
+      boardSize.width / columns,
+      boardSize.height / rows,
+    );
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _mergeBurstController,
+          builder: (_, child) {
+            final progress = Curves.easeOutCubic.transform(
+              _mergeBurstController.value,
+            );
+            final ringOpacity = (1 - progress).clamp(0.0, 1.0);
+            if (ringOpacity <= 0.01) {
+              return const SizedBox.shrink();
+            }
+
+            final center = _cellCenter(
+              cell: centerCell,
+              boardSize: boardSize,
+              rows: rows,
+              columns: columns,
+            );
+            final ringSize = baseSize * (0.9 + (1.24 * progress));
+            return Stack(
+              children: <Widget>[
+                Positioned(
+                  left: center.dx,
+                  top: center.dy,
+                  child: FractionalTranslation(
+                    translation: const Offset(-0.5, -0.5),
+                    child: Opacity(
+                      opacity: 0.5 * ringOpacity,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: <Color>[
+                              AppColors.colorFFE53E.withValues(alpha: 0.26),
+                              AppColors.colorFFE53E.withValues(alpha: 0),
+                            ],
+                          ),
+                          border: Border.all(
+                            color: AppColors.colorFFE53E.withValues(
+                              alpha: 0.76 * ringOpacity,
+                            ),
+                            width: 2.2,
+                          ),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: AppColors.colorFFE53E.withValues(
+                                alpha: 0.48 * ringOpacity,
+                              ),
+                              blurRadius: 16 + (14 * progress),
+                              spreadRadius: 1.2 + (2.4 * progress),
+                            ),
+                          ],
+                        ),
+                        child: SizedBox(width: ringSize, height: ringSize),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _buildMergeFloatingScore({
     required Size boardSize,
     required int rows,
     required int columns,
   }) {
     final centerCell = _mergeCenterCell;
-    if (centerCell == null || _mergeScoreGain <= 0) {
+    if (centerCell == null || _mergeFeedbackValue <= 0) {
       return const SizedBox.shrink();
     }
+
+    final (textColor, borderColor) = switch (_mergeFeedbackKind) {
+      _MergeFeedbackKind.score => (
+        AppColors.colorFFE53E,
+        AppColors.colorFFE53E.withValues(alpha: 0.9),
+      ),
+      _MergeFeedbackKind.progress => (
+        AppColors.color88CF66,
+        AppColors.color88CF66.withValues(alpha: 0.88),
+      ),
+      _MergeFeedbackKind.chain => (
+        AppColors.color18A9FF,
+        AppColors.color18A9FF.withValues(alpha: 0.86),
+      ),
+    };
+    final feedbackLabel = switch (_mergeFeedbackKind) {
+      _MergeFeedbackKind.chain => 'x$_mergeFeedbackValue',
+      _ => '+$_mergeFeedbackValue',
+    };
 
     return Positioned.fill(
       child: IgnorePointer(
@@ -1955,30 +2132,38 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
             return Stack(
               children: <Widget>[
                 Positioned(
-                  left: center.dx - 42,
+                  left: center.dx,
                   top: center.dy - rise,
                   child: Opacity(
                     opacity: opacity,
-                    child: Transform.scale(
-                      scale: scale,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: AppColors.black.withValues(alpha: 0.46),
-                          borderRadius: 12.borderRadiusAll,
-                          border: Border.all(
-                            color: AppColors.colorFFE53E.withValues(alpha: 0.9),
+                    child: FractionalTranslation(
+                      translation: const Offset(-0.5, -0.5),
+                      child: Transform.scale(
+                        scale: scale,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: AppColors.black.withValues(alpha: 0.52),
+                            borderRadius: 12.borderRadiusAll,
+                            border: Border.all(color: borderColor),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: textColor.withValues(alpha: 0.28),
+                                blurRadius: 18,
+                                spreadRadius: 1.4,
+                              ),
+                            ],
                           ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          child: Text(
-                            '+$_mergeScoreGain',
-                            style: AppStyles.bodyMedium(
-                              color: AppColors.colorFFE53E,
-                              fontWeight: FontWeight.w700,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 5,
+                            ),
+                            child: Text(
+                              feedbackLabel,
+                              style: AppStyles.bodyMedium(
+                                color: textColor,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
                         ),
@@ -2062,170 +2247,196 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
                     },
                     onPanEnd: (_) => _handlePanEnd(),
                     onPanCancel: _handlePanEnd,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: <Widget>[
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: <Color>[
-                                AppColors.color131A29.withValues(alpha: 0.96),
-                                AppColors.color111827.withValues(alpha: 0.98),
-                              ],
+                    child: AnimatedBuilder(
+                      animation: _mergeBurstController,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: <Widget>[
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: <Color>[
+                                  AppColors.color131A29.withValues(alpha: 0.96),
+                                  AppColors.color111827.withValues(alpha: 0.98),
+                                ],
+                              ),
                             ),
-                          ),
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: <Widget>[
-                              IgnorePointer(
-                                child: RepaintBoundary(
-                                  child: CustomPaint(
-                                    painter: _PathPainter(
-                                      path: visualPath,
-                                      board: snapshot.board,
-                                      rows: rows,
-                                      columns: columns,
-                                      lineOpacity: lineOpacity,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: <Widget>[
+                                IgnorePointer(
+                                  child: RepaintBoundary(
+                                    child: CustomPaint(
+                                      painter: _PathPainter(
+                                        path: visualPath,
+                                        board: snapshot.board,
+                                        rows: rows,
+                                        columns: columns,
+                                        lineOpacity: lineOpacity,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              AnimatedBuilder(
-                                animation: Listenable.merge(<Listenable>[
-                                  _cellPopController,
-                                  _pathResolveController,
-                                  _pathFlowController,
-                                  _releasePathLineController,
-                                ]),
-                                builder: (_, child) {
-                                  return Column(
-                                    children: List<Widget>.generate(rows, (
-                                      row,
-                                    ) {
-                                      return Expanded(
-                                        child: Row(
-                                          children: List<Widget>.generate(
-                                            columns,
-                                            (column) {
-                                              final cell = LinkNumberCell(
-                                                row: row,
-                                                column: column,
-                                              );
-                                              final isSwapAnchor =
-                                                  snapshot.pendingSwapCell ==
-                                                  cell;
-                                              final destroyProgress =
-                                                  _destroyProgressForCell(cell);
-                                              final pathIndex = visualPath
-                                                  .indexOf(cell);
-                                              final isInVisualPath =
-                                                  pathIndex >= 0;
-                                              final isTileSelected =
-                                                  isInVisualPath ||
-                                                  isSwapAnchor;
-                                              final chainPulse =
-                                                  snapshot.activePath.length >=
-                                                          2 &&
-                                                      isInVisualPath
-                                                  ? _chainPulse(pathIndex)
-                                                  : 0.0;
-                                              final hiddenByDrop =
-                                                  _pendingMergeChangedCells
-                                                      .contains(cell);
-                                              final hiddenBySwap =
-                                                  (_swapFirstCell != null &&
-                                                      _swapFirstCell == cell) ||
-                                                  (_swapSecondCell != null &&
-                                                      _swapSecondCell == cell);
-                                              final tileValue =
-                                                  snapshot.board[row][column];
-                                              return Expanded(
-                                                child: _CellTile(
-                                                  value: tileValue,
-                                                  selected: isTileSelected,
-                                                  isSwapAnchor: isSwapAnchor,
-                                                  isPopping: _poppingCells
-                                                      .contains(cell),
-                                                  chainPulse: chainPulse,
-                                                  destroyProgress:
-                                                      destroyProgress,
-                                                  scale: _tileScale(
-                                                    cell: cell,
+                                AnimatedBuilder(
+                                  animation: Listenable.merge(<Listenable>[
+                                    _cellPopController,
+                                    _pathResolveController,
+                                    _pathFlowController,
+                                    _releasePathLineController,
+                                  ]),
+                                  builder: (_, child) {
+                                    return Column(
+                                      children: List<Widget>.generate(rows, (
+                                        row,
+                                      ) {
+                                        return Expanded(
+                                          child: Row(
+                                            children: List<Widget>.generate(
+                                              columns,
+                                              (column) {
+                                                final cell = LinkNumberCell(
+                                                  row: row,
+                                                  column: column,
+                                                );
+                                                final isSwapAnchor =
+                                                    snapshot.pendingSwapCell ==
+                                                    cell;
+                                                final destroyProgress =
+                                                    _destroyProgressForCell(
+                                                      cell,
+                                                    );
+                                                final pathIndex = visualPath
+                                                    .indexOf(cell);
+                                                final isInVisualPath =
+                                                    pathIndex >= 0;
+                                                final isTileSelected =
+                                                    isInVisualPath ||
+                                                    isSwapAnchor;
+                                                final chainPulse =
+                                                    snapshot
+                                                                .activePath
+                                                                .length >=
+                                                            2 &&
+                                                        isInVisualPath
+                                                    ? _chainPulse(pathIndex)
+                                                    : 0.0;
+                                                final hiddenByDrop =
+                                                    _pendingMergeChangedCells
+                                                        .contains(cell);
+                                                final hiddenBySwap =
+                                                    (_swapFirstCell != null &&
+                                                        _swapFirstCell ==
+                                                            cell) ||
+                                                    (_swapSecondCell != null &&
+                                                        _swapSecondCell ==
+                                                            cell);
+                                                final tileValue =
+                                                    snapshot.board[row][column];
+                                                return Expanded(
+                                                  child: _CellTile(
+                                                    value: tileValue,
                                                     selected: isTileSelected,
                                                     isSwapAnchor: isSwapAnchor,
+                                                    isPopping: _poppingCells
+                                                        .contains(cell),
+                                                    chainPulse: chainPulse,
                                                     destroyProgress:
                                                         destroyProgress,
-                                                    chainPulse: chainPulse,
+                                                    scale: _tileScale(
+                                                      cell: cell,
+                                                      selected: isTileSelected,
+                                                      isSwapAnchor:
+                                                          isSwapAnchor,
+                                                      destroyProgress:
+                                                          destroyProgress,
+                                                      chainPulse: chainPulse,
+                                                    ),
+                                                    destroyingAnimationKey:
+                                                        ValueKey<String>(
+                                                          'destroy_${_pathResolveSequence}_${row}_$column',
+                                                        ),
+                                                    hidden:
+                                                        hiddenByDrop ||
+                                                        hiddenBySwap,
+                                                    showCellBorder: false,
                                                   ),
-                                                  destroyingAnimationKey:
-                                                      ValueKey<String>(
-                                                        'destroy_${_pathResolveSequence}_${row}_$column',
-                                                      ),
-                                                  hidden:
-                                                      hiddenByDrop ||
-                                                      hiddenBySwap,
-                                                  showCellBorder: false,
-                                                ),
-                                              );
-                                            },
+                                                );
+                                              },
+                                            ),
                                           ),
-                                        ),
-                                      );
-                                    }),
-                                  );
-                                },
-                              ),
-                            ],
+                                        );
+                                      }),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        _buildBreakSkillExecuteOverlay(
-                          boardSize: boardSize,
-                          rows: rows,
-                          columns: columns,
-                        ),
-                        _buildDropCascadeOverlay(
-                          boardSize: boardSize,
-                          rows: rows,
-                          columns: columns,
-                        ),
-                        _buildSwapSkillExecuteOverlay(
-                          boardSize: boardSize,
-                          rows: rows,
-                          columns: columns,
-                        ),
-                        _buildMergeFloatingScore(
-                          boardSize: boardSize,
-                          rows: rows,
-                          columns: columns,
-                        ),
-                        _buildTutorialTapGuideOverlay(
-                          boardSize: boardSize,
-                          rows: rows,
-                          columns: columns,
-                        ),
-                        _buildSkillGuideOverlay(snapshot),
-                        if (_showLegacyChainBurstOverlay &&
-                            _burstPath.length >= 2)
-                          _buildChainBurstOverlay(
+                          _buildBreakSkillExecuteOverlay(
                             boardSize: boardSize,
                             rows: rows,
                             columns: columns,
                           ),
-                        if (widget.showResultOverlay && snapshot.isGameOver)
-                          LinkNumberResultOverlay(
-                            hasWon: snapshot.hasWon,
-                            currentLevel: snapshot.currentLevel,
-                            isEndlessMode: snapshot.isEndlessMode,
-                            endlessBestTile: snapshot.endlessBestTile,
-                            rewardCoins: widget.winRewardCoins,
-                            onRetry: widget.onRetry,
-                            onNextLevel: widget.onNextLevel,
-                            onWatchRewardAd: widget.onWatchRewardAd,
-                            canWatchRewardAd: widget.canWatchRewardAd,
+                          _buildDropCascadeOverlay(
+                            boardSize: boardSize,
+                            rows: rows,
+                            columns: columns,
                           ),
-                      ],
+                          _buildSwapSkillExecuteOverlay(
+                            boardSize: boardSize,
+                            rows: rows,
+                            columns: columns,
+                          ),
+                          _buildMergeImpactPulseOverlay(
+                            boardSize: boardSize,
+                            rows: rows,
+                            columns: columns,
+                          ),
+                          _buildMergeFloatingScore(
+                            boardSize: boardSize,
+                            rows: rows,
+                            columns: columns,
+                          ),
+                          _buildTutorialTapGuideOverlay(
+                            boardSize: boardSize,
+                            rows: rows,
+                            columns: columns,
+                          ),
+                          _buildSkillGuideOverlay(snapshot),
+                          if (_showLegacyChainBurstOverlay &&
+                              _burstPath.length >= 2)
+                            _buildChainBurstOverlay(
+                              boardSize: boardSize,
+                              rows: rows,
+                              columns: columns,
+                            ),
+                          if (widget.showResultOverlay && snapshot.isGameOver)
+                            LinkNumberResultOverlay(
+                              hasWon: snapshot.hasWon,
+                              currentLevel: snapshot.currentLevel,
+                              isEndlessMode: snapshot.isEndlessMode,
+                              endlessBestTile: snapshot.endlessBestTile,
+                              rewardCoins: widget.winRewardCoins,
+                              onRetry: widget.onRetry,
+                              onNextLevel: widget.onNextLevel,
+                              onWatchRewardAd: widget.onWatchRewardAd,
+                              canWatchRewardAd: widget.canWatchRewardAd,
+                            ),
+                        ],
+                      ),
+                      builder: (_, child) {
+                        final scale = _resolveMergeBoardScale();
+                        if ((scale - 1).abs() < 0.001 || child == null) {
+                          return child ?? const SizedBox.shrink();
+                        }
+                        return Transform.scale(
+                          scale: scale,
+                          alignment: Alignment.center,
+                          child: child,
+                        );
+                      },
                     ),
                   );
                 },
@@ -2338,6 +2549,8 @@ class _CellTile extends StatelessWidget {
     );
   }
 }
+
+enum _MergeFeedbackKind { score, progress, chain }
 
 enum _SkillFxKind { none, breakTravel, breakImpact }
 

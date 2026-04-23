@@ -42,6 +42,10 @@ class AppUiSfx {
     await _playResultSound(AppAssets.linkNumberLossSfxMp3);
   }
 
+  static Future<void> playFeverTrigger() async {
+    await _playResultSound(AppAssets.linkNumberFeverSfxMp3);
+  }
+
   static Future<void> _playResultSound(String assetPath) async {
     try {
       await _resultPlayer.stop();

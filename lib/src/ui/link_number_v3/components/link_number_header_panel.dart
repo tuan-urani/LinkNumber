@@ -22,7 +22,10 @@ class LinkNumberHeaderPanel extends StatelessWidget {
     if (snapshot.isGoalCountMode && snapshot.goalTargets.isNotEmpty) {
       return snapshot.goalTargets.first.value;
     }
-    return snapshot.scoreTarget > 0 ? snapshot.scoreTarget : 2;
+    if (snapshot.isGoalScoreMode) {
+      return snapshot.remainingScore;
+    }
+    return 2;
   }
 
   @override
@@ -197,19 +200,32 @@ class _GoalBody extends StatelessWidget {
   final LinkNumberSnapshot snapshot;
   final int goalDisplayValue;
 
+  double _goalScoreTextScale() {
+    if (goalDisplayValue >= 10000) {
+      return 0.5;
+    }
+    if (goalDisplayValue >= 1000) {
+      return 0.8;
+    }
+    if (goalDisplayValue >= 100) {
+      return 1.0;
+    }
+    return 1.16;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!snapshot.isGoalCountMode || snapshot.goalTargets.isEmpty) {
       return Align(
         alignment: Alignment.center,
         child: SizedBox(
-          height: compact ? 48 : 54,
-          width: compact ? 48 : 54,
+          height: compact ? 58 : 64,
+          width: compact ? 58 : 64,
           child: LinkNumberV3Tile(
             value: goalDisplayValue,
             compactText: true,
             showBorder: false,
-            valueTextScale: 1.16,
+            valueTextScale: _goalScoreTextScale(),
             cornerRadius: compact ? 9 : 10,
           ),
         ),
