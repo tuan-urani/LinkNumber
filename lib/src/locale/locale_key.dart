@@ -59,10 +59,15 @@ class LocaleKey {
   static const String linkNumberEndlessGameOver =
       'link_number_endless_game_over';
   static const String linkNumberFeverLabel = 'link_number_fever_label';
+  static const String linkNumberFeverTitle = 'link_number_fever_title';
+  static const String linkNumberFeverMultiplier =
+      'link_number_fever_multiplier';
   static const String linkNumberFeverCount = 'link_number_fever_count';
   static const String linkNumberFeverScore = 'link_number_fever_score';
   static const String linkNumberFeverMergesLeft =
       'link_number_fever_merges_left';
+  static const String linkNumberFeverTurnsLeft = 'link_number_fever_turns_left';
+  static const String linkNumberFeverLetsGo = 'link_number_fever_lets_go';
   static const String linkNumberFeverCharge = 'link_number_fever_charge';
   static const String splashLoading = 'splash_loading';
   static const String splashPrivacyPolicy = 'splash_privacy_policy';

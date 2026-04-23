@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show PathMetric;
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -84,6 +85,7 @@ class LinkNumberV3Page extends GetView<LinkNumberController> {
                 final tutorialFocusCell = controller.tutorialFocusCell;
                 final isTutorialActive = controller.isInteractiveTutorialActive;
                 final showReadyToPlayFx = controller.showReadyToPlayFx;
+                final showFeverTriggerFx = controller.showFeverTriggerFx;
                 return LayoutBuilder(
                   builder: (_, constraints) {
                     final isWide = constraints.maxWidth >= 980;
@@ -148,6 +150,10 @@ class LinkNumberV3Page extends GetView<LinkNumberController> {
                       fit: StackFit.expand,
                       children: <Widget>[
                         content,
+                        if (showFeverTriggerFx)
+                          Positioned.fill(
+                            child: _FeverTriggeredGate(snapshot: snapshot),
+                          ),
                         if (showReadyToPlayFx)
                           Positioned.fill(
                             child: _ReadyToPlayGate(
@@ -326,9 +332,248 @@ class _ReadyToPlayGate extends StatelessWidget {
   }
 }
 
-class _BoardArea extends StatelessWidget {
-  static const int _feverMergesPerActivation = 3;
+class _FeverTriggeredGate extends StatelessWidget {
+  const _FeverTriggeredGate({required this.snapshot});
 
+  final LinkNumberSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final turnsLeftLabel = LocaleKey.linkNumberFeverTurnsLeft.trParams(
+      <String, String>{'count': '${snapshot.feverMergesLeft}'},
+    );
+    return AbsorbPointer(
+      child: ColoredBox(
+        color: AppColors.black.withValues(alpha: 0.74),
+        child: Center(
+          child: TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutBack,
+            tween: Tween<double>(begin: 0.86, end: 1),
+            builder: (_, value, child) =>
+                Transform.scale(scale: value, child: child),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 360),
+                child: Stack(
+                  alignment: Alignment.center,
+                  clipBehavior: Clip.none,
+                  children: <Widget>[
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: <Color>[
+                            AppColors.colorFFE53E.withValues(alpha: 0.8),
+                            AppColors.colorFFCA2A.withValues(alpha: 0.42),
+                            AppColors.colorF39702.withValues(alpha: 0.1),
+                            AppColors.transparent,
+                          ],
+                          stops: const <double>[0.0, 0.26, 0.52, 1],
+                        ),
+                      ),
+                      child: const SizedBox(width: 290, height: 290),
+                    ),
+                    Positioned(
+                      left: 14,
+                      top: 92,
+                      child: _FeverSparkle(size: 34, rotate: -0.12),
+                    ),
+                    Positioned(
+                      right: 18,
+                      top: 138,
+                      child: _FeverSparkle(size: 26, rotate: 0.2),
+                    ),
+                    Positioned(
+                      left: 50,
+                      top: 176,
+                      child: _FeverSparkle(size: 20, rotate: 0.08),
+                    ),
+                    Positioned(
+                      right: 56,
+                      top: 188,
+                      child: _FeverSparkle(size: 22, rotate: -0.15),
+                    ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Transform.rotate(
+                          angle: -0.02,
+                          child: _FeverGlowText(
+                            text: LocaleKey.linkNumberFeverTitle.tr,
+                            fontSize: 78,
+                            letterSpacing: 2.4,
+                          ),
+                        ),
+                        Transform.translate(
+                          offset: const Offset(0, -8),
+                          child: _FeverGlowText(
+                            text: LocaleKey.linkNumberFeverMultiplier.tr,
+                            fontSize: 118,
+                            letterSpacing: 1,
+                            lineHeight: 0.9,
+                          ),
+                        ),
+                        10.height,
+                        Transform.translate(
+                          offset: const Offset(0, -10),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              borderRadius: 999.borderRadiusAll,
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: <Color>[
+                                  AppColors.color131A29.withValues(alpha: 0.96),
+                                  AppColors.color111827.withValues(alpha: 0.98),
+                                ],
+                              ),
+                              border: Border.all(
+                                color: AppColors.colorFFE53E.withValues(
+                                  alpha: 0.88,
+                                ),
+                                width: 2,
+                              ),
+                              boxShadow: <BoxShadow>[
+                                BoxShadow(
+                                  color: AppColors.colorFFE53E.withValues(
+                                    alpha: 0.36,
+                                  ),
+                                  blurRadius: 16,
+                                  spreadRadius: 1.4,
+                                ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.timer_outlined,
+                                    color: AppColors.colorFFE53E,
+                                    size: 24,
+                                  ),
+                                  8.width,
+                                  Text(
+                                    turnsLeftLabel,
+                                    style: AppStyles.h3(
+                                      color: AppColors.white,
+                                      fontWeight: FontWeight.w800,
+                                    ).copyWith(height: 1),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FeverGlowText extends StatelessWidget {
+  const _FeverGlowText({
+    required this.text,
+    required this.fontSize,
+    this.letterSpacing = 1.2,
+    this.lineHeight = 1,
+  });
+
+  final String text;
+  final double fontSize;
+  final double letterSpacing;
+  final double lineHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: <Widget>[
+        Transform.translate(
+          offset: const Offset(0, 3),
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            style:
+                AppStyles.h1(
+                  color: AppColors.colorF39702,
+                  fontWeight: FontWeight.w900,
+                ).copyWith(
+                  fontSize: fontSize,
+                  letterSpacing: letterSpacing,
+                  height: lineHeight,
+                ),
+          ),
+        ),
+        Text(
+          text,
+          textAlign: TextAlign.center,
+          style:
+              AppStyles.h1(
+                color: AppColors.colorFFE53E,
+                fontWeight: FontWeight.w900,
+              ).copyWith(
+                fontSize: fontSize,
+                letterSpacing: letterSpacing,
+                height: lineHeight,
+                shadows: <Shadow>[
+                  Shadow(
+                    color: AppColors.colorFFE53E.withValues(alpha: 0.56),
+                    blurRadius: 16,
+                    offset: Offset.zero,
+                  ),
+                  Shadow(
+                    color: AppColors.colorFFCA2A.withValues(alpha: 0.42),
+                    blurRadius: 26,
+                    offset: Offset.zero,
+                  ),
+                ],
+              ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FeverSparkle extends StatelessWidget {
+  const _FeverSparkle({required this.size, required this.rotate});
+
+  final double size;
+  final double rotate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.rotate(
+      angle: rotate,
+      child: Icon(
+        Icons.auto_awesome,
+        size: size,
+        color: AppColors.colorFFE53E,
+        shadows: <Shadow>[
+          Shadow(
+            color: AppColors.colorFFE53E.withValues(alpha: 0.7),
+            blurRadius: 16,
+            offset: Offset.zero,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BoardArea extends StatelessWidget {
   const _BoardArea({
     required this.controller,
     required this.snapshot,
@@ -349,13 +594,10 @@ class _BoardArea extends StatelessWidget {
     }
 
     if (snapshot.isFeverActive) {
-      return (snapshot.feverMergesLeft / _feverMergesPerActivation).clamp(
-        0.0,
-        1.0,
-      );
+      return 1.0;
     }
 
-    return (snapshot.feverGauge / 100).clamp(0.0, 1.0);
+    return (snapshot.feverGauge / 200).clamp(0.0, 1.0);
   }
 
   @override
@@ -430,44 +672,6 @@ class _BoardArea extends StatelessWidget {
             ),
           ),
         ),
-        Positioned(
-          left: 0,
-          top: 14,
-          child: IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: 999.borderRadiusAll,
-                color: AppColors.color111827.withValues(alpha: 0.74),
-                border: Border.all(
-                  color: snapshot.isFeverActive
-                      ? AppColors.colorFFE53E.withValues(alpha: 0.9)
-                      : AppColors.color18A9FF.withValues(alpha: 0.9),
-                ),
-                boxShadow: <BoxShadow>[
-                  BoxShadow(
-                    color:
-                        (snapshot.isFeverActive
-                                ? AppColors.colorFFE53E
-                                : AppColors.color18A9FF)
-                            .withValues(alpha: 0.32),
-                    blurRadius: 8,
-                    spreadRadius: 0.8,
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                child: Text(
-                  '${(feverProgress * 100).round()}%',
-                  style: AppStyles.bodySmall(
-                    color: AppColors.white,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -531,6 +735,15 @@ class _FeverBorderProgressPainter extends CustomPainter {
     final rRect = RRect.fromRectAndRadius(drawRect, borderRadius);
     final borderPath = Path()..addRRect(rRect);
     final metric = borderPath.computeMetrics().first;
+    final pathLength = metric.length;
+    final bottomCenterOffset = _findNearestOffsetOnPath(
+      metric: metric,
+      target: Offset(drawRect.center.dx, drawRect.bottom),
+    );
+    final topCenterOffset = _findNearestOffsetOnPath(
+      metric: metric,
+      target: Offset(drawRect.center.dx, drawRect.top),
+    );
 
     final trackGlowPaint = Paint()
       ..style = PaintingStyle.stroke
@@ -553,11 +766,30 @@ class _FeverBorderProgressPainter extends CustomPainter {
       return;
     }
 
-    final progressLength = metric.length * clampedProgress;
-    final progressPath = metric.extractPath(
-      0,
-      progressLength,
-      startWithMoveTo: true,
+    final forwardToTop = _distanceForwardOnPath(
+      start: bottomCenterOffset,
+      end: topCenterOffset,
+      totalLength: pathLength,
+    );
+    final backwardToTop = pathLength - forwardToTop;
+    final forwardLength = forwardToTop * clampedProgress;
+    final backwardLength = backwardToTop * clampedProgress;
+
+    final forwardPath = _extractWrappedPath(
+      metric: metric,
+      startOffset: bottomCenterOffset,
+      length: forwardLength,
+      totalLength: pathLength,
+    );
+    final backwardStart = _normalizeOffset(
+      bottomCenterOffset - backwardLength,
+      pathLength,
+    );
+    final backwardPath = _extractWrappedPath(
+      metric: metric,
+      startOffset: backwardStart,
+      length: backwardLength,
+      totalLength: pathLength,
     );
 
     final progressGlowPaint = Paint()
@@ -567,7 +799,8 @@ class _FeverBorderProgressPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round
       ..color = glowColor
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.2);
-    canvas.drawPath(progressPath, progressGlowPaint);
+    canvas.drawPath(forwardPath, progressGlowPaint);
+    canvas.drawPath(backwardPath, progressGlowPaint);
 
     final progressPaint = Paint()
       ..style = PaintingStyle.stroke
@@ -590,24 +823,85 @@ class _FeverBorderProgressPainter extends CustomPainter {
               ],
         stops: const <double>[0.0, 0.55, 1.0],
       ).createShader(drawRect);
-    canvas.drawPath(progressPath, progressPaint);
+    canvas.drawPath(forwardPath, progressPaint);
+    canvas.drawPath(backwardPath, progressPaint);
+  }
 
-    final headTangent = metric.getTangentForOffset(progressLength);
-    if (headTangent == null) {
-      return;
+  double _findNearestOffsetOnPath({
+    required PathMetric metric,
+    required Offset target,
+  }) {
+    const sampleCount = 360;
+    var bestOffset = 0.0;
+    var bestDistanceSquared = double.infinity;
+    for (var i = 0; i <= sampleCount; i++) {
+      final offset = metric.length * (i / sampleCount);
+      final tangent = metric.getTangentForOffset(offset);
+      if (tangent == null) {
+        continue;
+      }
+      final dx = tangent.position.dx - target.dx;
+      final dy = tangent.position.dy - target.dy;
+      final distanceSquared = (dx * dx) + (dy * dy);
+      if (distanceSquared < bestDistanceSquared) {
+        bestDistanceSquared = distanceSquared;
+        bestOffset = offset;
+      }
     }
-    final headCenter = headTangent.position;
-    final headRadius = strokeWidth * 0.84;
-    final headGlowPaint = Paint()
-      ..style = PaintingStyle.fill
-      ..color = glowColor
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5.2);
-    canvas.drawCircle(headCenter, headRadius + 1.8, headGlowPaint);
+    return bestOffset;
+  }
 
-    final headPaint = Paint()
-      ..style = PaintingStyle.fill
-      ..color = progressColor;
-    canvas.drawCircle(headCenter, headRadius, headPaint);
+  double _distanceForwardOnPath({
+    required double start,
+    required double end,
+    required double totalLength,
+  }) {
+    if (end >= start) {
+      return end - start;
+    }
+    return (totalLength - start) + end;
+  }
+
+  double _normalizeOffset(double offset, double totalLength) {
+    if (totalLength <= 0) {
+      return 0;
+    }
+    var normalized = offset % totalLength;
+    if (normalized < 0) {
+      normalized += totalLength;
+    }
+    return normalized;
+  }
+
+  Path _extractWrappedPath({
+    required PathMetric metric,
+    required double startOffset,
+    required double length,
+    required double totalLength,
+  }) {
+    if (length <= 0 || totalLength <= 0) {
+      return Path();
+    }
+    final safeStart = _normalizeOffset(startOffset, totalLength);
+    final safeLength = length.clamp(0.0, totalLength);
+    final end = safeStart + safeLength;
+    if (end <= totalLength) {
+      return metric.extractPath(safeStart, end, startWithMoveTo: true);
+    }
+
+    final first = metric.extractPath(
+      safeStart,
+      totalLength,
+      startWithMoveTo: true,
+    );
+    final second = metric.extractPath(
+      0,
+      end - totalLength,
+      startWithMoveTo: true,
+    );
+    return Path()
+      ..addPath(first, Offset.zero)
+      ..addPath(second, Offset.zero);
   }
 
   @override

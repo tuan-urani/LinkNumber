@@ -29,13 +29,14 @@ class LinkNumberEngine {
   static const double kAntiCluster = 0.45;
   static const double kGlobalBalancePenalty = 0.25;
 
-  static const int _minPlayablePairs = 4;
+  static const int _initialMinPlayablePairs = 4;
+  static const int _runtimeMinPlayablePairs = 1;
   static const int _startingSwapCharges = 100;
   static const int _breakTileCost = 100;
   static const int _swapTileCost = 40;
   static const int _rewardAdCoins = 200;
   static const int levelWinRewardCoins = 50;
-  static const int _feverThreshold = 100;
+  static const int _feverThreshold = 200;
   static const int _feverMergesPerActivation = 3;
   static const int _feverMultiplier = 2;
 
@@ -1242,12 +1243,14 @@ class LinkNumberEngine {
         }
       }
 
-      if (_countPlayablePairs(board) >= _minPlayablePairs) {
+      final playablePairs = _countPlayablePairs(board);
+      if (playablePairs >= _initialMinPlayablePairs) {
         return board;
       }
 
-      _injectGuaranteedPairs(board);
-      if (_countPlayablePairs(board) >= _minPlayablePairs) {
+      final missingPairs = _initialMinPlayablePairs - playablePairs;
+      _injectGuaranteedPairs(board, pairCount: missingPairs);
+      if (_countPlayablePairs(board) >= _initialMinPlayablePairs) {
         return board;
       }
     }
@@ -1260,7 +1263,7 @@ class LinkNumberEngine {
       ),
     );
 
-    _injectGuaranteedPairs(fallback);
+    _injectGuaranteedPairs(fallback, pairCount: _initialMinPlayablePairs);
     return fallback;
   }
 
@@ -1283,8 +1286,10 @@ class LinkNumberEngine {
     if (_isEndlessMode) {
       return;
     }
-    if (_countPlayablePairs(board) < _minPlayablePairs) {
-      _injectGuaranteedPairs(board);
+    final playablePairs = _countPlayablePairs(board);
+    if (playablePairs < _runtimeMinPlayablePairs) {
+      final missingPairs = _runtimeMinPlayablePairs - playablePairs;
+      _injectGuaranteedPairs(board, pairCount: missingPairs);
     }
   }
 
@@ -1423,8 +1428,12 @@ class LinkNumberEngine {
     return pairs;
   }
 
-  void _injectGuaranteedPairs(List<List<int>> board) {
-    for (int index = 0; index < _minPlayablePairs; index++) {
+  void _injectGuaranteedPairs(
+    List<List<int>> board, {
+    int pairCount = _runtimeMinPlayablePairs,
+  }) {
+    final safePairCount = math.max(1, pairCount);
+    for (int index = 0; index < safePairCount; index++) {
       final row = _random.nextInt(rows);
       final column = _random.nextInt(columns - 1);
       board[row][column + 1] = board[row][column];
@@ -1591,14 +1600,14 @@ class LinkNumberEngine {
         nextActive = false;
       }
       return (
-        nextFeverGauge: nextGauge,
+        nextFeverGauge: 0,
         nextFeverActive: nextActive,
         nextFeverMergesLeft: nextMergesLeft,
       );
     }
 
     if (nextGauge >= _feverThreshold) {
-      nextGauge -= _feverThreshold;
+      nextGauge = 0;
       nextActive = true;
       nextMergesLeft = _feverMergesPerActivation;
     }

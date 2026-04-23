@@ -16,6 +16,7 @@ class LinkNumberController extends GetxController {
   static const int _guidedTutorialVersion = 16;
   static const Duration _tutorialMergeCommitDelay = Duration(milliseconds: 240);
   static const Duration _tutorialExitDelay = Duration(milliseconds: 560);
+  static const Duration _feverTriggerFxDuration = Duration(seconds: 2);
 
   static const List<_TutorialStage> _tutorialStages = <_TutorialStage>[
     _TutorialStage(
@@ -85,14 +86,17 @@ class LinkNumberController extends GetxController {
   late final Rx<LinkNumberSnapshot> snapshot = _engine.snapshot.obs;
   final RxBool _isInteractiveTutorialActive = false.obs;
   final RxBool _showReadyToPlayFx = false.obs;
+  final RxBool _showFeverTriggerFx = false.obs;
   final RxInt _tutorialStageIndex = 0.obs;
   final RxInt _tutorialTapStep = 0.obs;
   bool _isResolvingMerge = false;
   bool _isTutorialCommitting = false;
   bool _isRewardAdFlowInProgress = false;
+  int _feverTriggerFxSequence = 0;
 
   bool get isInteractiveTutorialActive => _isInteractiveTutorialActive.value;
   bool get showReadyToPlayFx => _showReadyToPlayFx.value;
+  bool get showFeverTriggerFx => _showFeverTriggerFx.value;
   bool get shouldReserveAdBannerSpace => _admobManager.isAvailable;
   int get levelWinRewardCoins =>
       snapshot.value.isEndlessMode ? 0 : LinkNumberEngine.levelWinRewardCoins;
@@ -134,9 +138,11 @@ class LinkNumberController extends GetxController {
       _handleInteractiveTutorialPanStart(localPosition, boardSize);
       return;
     }
-    snapshot.value = _engine.handlePanStart(
-      localPosition: localPosition,
-      boardSize: boardSize,
+    _setSnapshot(
+      _engine.handlePanStart(
+        localPosition: localPosition,
+        boardSize: boardSize,
+      ),
     );
   }
 
@@ -150,9 +156,11 @@ class LinkNumberController extends GetxController {
       _handleInteractiveTutorialPanUpdate(localPosition, boardSize);
       return;
     }
-    snapshot.value = _engine.handlePanUpdate(
-      localPosition: localPosition,
-      boardSize: boardSize,
+    _setSnapshot(
+      _engine.handlePanUpdate(
+        localPosition: localPosition,
+        boardSize: boardSize,
+      ),
     );
   }
 
@@ -174,7 +182,7 @@ class LinkNumberController extends GetxController {
         !current.isGameOver;
 
     if (!shouldDelayMergeCommit) {
-      snapshot.value = _engine.handlePanEnd();
+      _setSnapshot(_engine.handlePanEnd());
       return;
     }
 
@@ -188,7 +196,7 @@ class LinkNumberController extends GetxController {
       if (isClosed) {
         return;
       }
-      snapshot.value = _engine.handlePanEnd();
+      _setSnapshot(_engine.handlePanEnd());
     } finally {
       _isResolvingMerge = false;
     }
@@ -204,9 +212,11 @@ class LinkNumberController extends GetxController {
       return;
     }
 
-    snapshot.value = _engine.handleBoardTap(
-      localPosition: localPosition,
-      boardSize: boardSize,
+    _setSnapshot(
+      _engine.handleBoardTap(
+        localPosition: localPosition,
+        boardSize: boardSize,
+      ),
     );
   }
 
@@ -216,7 +226,7 @@ class LinkNumberController extends GetxController {
         _showReadyToPlayFx.value) {
       return;
     }
-    snapshot.value = _engine.selectSkill(skill);
+    _setSnapshot(_engine.selectSkill(skill));
   }
 
   void claimRewardCoins() {
@@ -225,7 +235,7 @@ class LinkNumberController extends GetxController {
         _showReadyToPlayFx.value) {
       return;
     }
-    snapshot.value = _engine.claimRewardCoins();
+    _setSnapshot(_engine.claimRewardCoins());
   }
 
   void clearPath() {
@@ -234,7 +244,7 @@ class LinkNumberController extends GetxController {
         _showReadyToPlayFx.value) {
       return;
     }
-    snapshot.value = _engine.clearActivePath();
+    _setSnapshot(_engine.clearActivePath());
   }
 
   void restartLevel() {
@@ -243,7 +253,7 @@ class LinkNumberController extends GetxController {
         _showReadyToPlayFx.value) {
       return;
     }
-    snapshot.value = _engine.restartLevel();
+    _setSnapshot(_engine.restartLevel());
   }
 
   void retryLevel() {
@@ -252,7 +262,7 @@ class LinkNumberController extends GetxController {
         _showReadyToPlayFx.value) {
       return;
     }
-    snapshot.value = _engine.retryLevelAfterLose();
+    _setSnapshot(_engine.retryLevelAfterLose());
   }
 
   void continueWithRewardAdMoves() {
@@ -277,7 +287,7 @@ class LinkNumberController extends GetxController {
       if (!hasReward || isClosed) {
         return;
       }
-      snapshot.value = _engine.continueAfterRewardAd(extraMoves: 3);
+      _setSnapshot(_engine.continueAfterRewardAd(extraMoves: 3));
     } finally {
       _isRewardAdFlowInProgress = false;
     }
@@ -289,7 +299,7 @@ class LinkNumberController extends GetxController {
         _showReadyToPlayFx.value) {
       return;
     }
-    snapshot.value = _engine.nextLevel();
+    _setSnapshot(_engine.nextLevel());
   }
 
   void onReadyToPlayPressed() {
@@ -323,7 +333,8 @@ class LinkNumberController extends GetxController {
     _tutorialStageIndex.value = safeStageIndex;
     _tutorialTapStep.value = 0;
     _isTutorialCommitting = false;
-    snapshot.value = _buildTutorialSnapshot(stage: _currentTutorialStage);
+    _hideFeverTriggerFx();
+    _setSnapshot(_buildTutorialSnapshot(stage: _currentTutorialStage));
   }
 
   LinkNumberSnapshot _buildTutorialSnapshot({
@@ -414,9 +425,11 @@ class LinkNumberController extends GetxController {
     }
 
     _tutorialTapStep.value = 1;
-    snapshot.value = current.copyWith(
-      activePath: <LinkNumberCell>[startCell],
-      activeValue: startValue,
+    _setSnapshot(
+      current.copyWith(
+        activePath: <LinkNumberCell>[startCell],
+        activeValue: startValue,
+      ),
     );
   }
 
@@ -444,7 +457,7 @@ class LinkNumberController extends GetxController {
     if (path.length >= 2 && mappedCell == path[path.length - 2]) {
       path.removeLast();
       _tutorialTapStep.value = path.length;
-      snapshot.value = current.copyWith(activePath: path);
+      _setSnapshot(current.copyWith(activePath: path));
       return;
     }
 
@@ -465,7 +478,7 @@ class LinkNumberController extends GetxController {
 
     path.add(mappedCell);
     _tutorialTapStep.value = (step + 1).clamp(0, guidePath.length);
-    snapshot.value = current.copyWith(activePath: path, activeValue: cellValue);
+    _setSnapshot(current.copyWith(activePath: path, activeValue: cellValue));
   }
 
   Future<void> _handleInteractiveTutorialPanEnd() async {
@@ -484,9 +497,8 @@ class LinkNumberController extends GetxController {
     if (current.activePath.isEmpty && current.activeValue == null) {
       return;
     }
-    snapshot.value = current.copyWith(
-      activePath: const <LinkNumberCell>[],
-      activeValue: null,
+    _setSnapshot(
+      current.copyWith(activePath: const <LinkNumberCell>[], activeValue: null),
     );
   }
 
@@ -533,14 +545,16 @@ class LinkNumberController extends GetxController {
         progressValues: mergedPathValues,
       );
 
-      snapshot.value = _buildTutorialSnapshot(
-        stage: stage,
-        board: board,
-        activePath: const <LinkNumberCell>[],
-        activeValue: null,
-        score: source.score + mergedValue,
-        movesLeft: math.max(0, source.movesLeft - 1),
-        goalTargets: nextGoalTargets,
+      _setSnapshot(
+        _buildTutorialSnapshot(
+          stage: stage,
+          board: board,
+          activePath: const <LinkNumberCell>[],
+          activeValue: null,
+          score: source.score + mergedValue,
+          movesLeft: math.max(0, source.movesLeft - 1),
+          goalTargets: nextGoalTargets,
+        ),
       );
 
       await Future<void>.delayed(_tutorialExitDelay);
@@ -572,8 +586,46 @@ class LinkNumberController extends GetxController {
     if (isClosed) {
       return;
     }
-    snapshot.value = _engine.restartLevel();
+    _hideFeverTriggerFx();
+    _setSnapshot(_engine.restartLevel());
     _showReadyToPlayFx.value = true;
+  }
+
+  void _setSnapshot(LinkNumberSnapshot nextSnapshot) {
+    final previousSnapshot = snapshot.value;
+    snapshot.value = nextSnapshot;
+    final didTriggerFever =
+        !_isInteractiveTutorialActive.value &&
+        !previousSnapshot.isFeverActive &&
+        nextSnapshot.isFeverActive;
+    if (!didTriggerFever) {
+      return;
+    }
+    _showFeverTriggerFxForDuration();
+  }
+
+  void _showFeverTriggerFxForDuration() {
+    final sequence = ++_feverTriggerFxSequence;
+    _showFeverTriggerFx.value = true;
+    unawaited(
+      Future<void>.delayed(_feverTriggerFxDuration, () {
+        if (isClosed || sequence != _feverTriggerFxSequence) {
+          return;
+        }
+        _showFeverTriggerFx.value = false;
+      }),
+    );
+  }
+
+  void _hideFeverTriggerFx() {
+    _feverTriggerFxSequence += 1;
+    _showFeverTriggerFx.value = false;
+  }
+
+  @override
+  void onClose() {
+    _hideFeverTriggerFx();
+    super.onClose();
   }
 
   List<List<int>> _cloneBoard(List<List<int>> board) {

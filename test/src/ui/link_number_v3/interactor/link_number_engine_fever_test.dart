@@ -11,7 +11,7 @@ import 'package:flow_connection/src/utils/app_shared.dart';
 
 void main() {
   group('LinkNumberEngine fever mode', () {
-    test('level mode can trigger fever multiple times in one level', () async {
+    test('level mode can still trigger fever with higher threshold', () async {
       final engine = await _createEngine(
         mode: LinkNumberPlayMode.level,
         level: 1,
@@ -30,7 +30,7 @@ void main() {
         previousActive = current.isFeverActive;
       }
 
-      expect(triggerCount, greaterThanOrEqualTo(2));
+      expect(triggerCount, greaterThanOrEqualTo(1));
     });
 
     test('endless mode never activates fever', () async {
