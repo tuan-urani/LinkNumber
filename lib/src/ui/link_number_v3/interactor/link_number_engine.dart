@@ -7,11 +7,14 @@ import 'package:flow_connection/src/core/managers/game_progress_manager.dart';
 import 'link_number_snapshot.dart';
 
 class LinkNumberEngine {
-  LinkNumberEngine({required GameProgressManager progressManager})
-    : _progressManager = progressManager,
-      _currentLevel = progressManager.currentLevel,
-      _coins = progressManager.coins,
-      _stars = progressManager.stars {
+  LinkNumberEngine({
+    required GameProgressManager progressManager,
+    this.playMode = LinkNumberPlayMode.level,
+  }) : _progressManager = progressManager,
+       _currentLevel = progressManager.currentLevel,
+       _coins = progressManager.coins,
+       _stars = progressManager.stars,
+       _endlessBestTile = progressManager.endlessBestTile {
     _snapshot = _buildSnapshotForLevel(
       level: _currentLevel,
       registerMode: true,
@@ -32,6 +35,9 @@ class LinkNumberEngine {
   static const int _swapTileCost = 40;
   static const int _rewardAdCoins = 200;
   static const int levelWinRewardCoins = 50;
+  static const int _feverThreshold = 100;
+  static const int _feverMergesPerActivation = 3;
+  static const int _feverMultiplier = 2;
 
   static const Map<int, double> _spawnWeightsStage1 = <int, double>{
     2: 40,
@@ -213,13 +219,17 @@ class LinkNumberEngine {
   int _coins;
   int _swapCharges = _startingSwapCharges;
   int _stars;
+  int _endlessBestTile;
 
   LinkNumberGoalMode? _lastGoalMode;
   int _sameModeStreak = 0;
   int _consecutiveScoreFails = 0;
   int _consecutiveCountWins = 0;
 
+  final LinkNumberPlayMode playMode;
+
   LinkNumberSnapshot get snapshot => _snapshot;
+  bool get _isEndlessMode => playMode == LinkNumberPlayMode.endless;
 
   LinkNumberSnapshot restartLevel() {
     _snapshot = _buildSnapshotForLevel(
@@ -244,7 +254,7 @@ class LinkNumberEngine {
   }
 
   LinkNumberSnapshot continueAfterRewardAd({int extraMoves = 3}) {
-    if (!_snapshot.hasLost) {
+    if (!_snapshot.hasLost || _isEndlessMode) {
       return _snapshot;
     }
 
@@ -261,7 +271,7 @@ class LinkNumberEngine {
   }
 
   LinkNumberSnapshot nextLevel() {
-    if (!_snapshot.hasWon) {
+    if (!_snapshot.hasWon || _isEndlessMode) {
       return _snapshot;
     }
 
@@ -389,7 +399,12 @@ class LinkNumberEngine {
     final board = _snapshot.board;
     final previousValue = board[last.row][last.column];
     final value = board[cell.row][cell.column];
-    if (!_isValidChainStep(previousValue: previousValue, nextValue: value)) {
+    final isFirstChainStep = path.length == 1;
+    if (!_isValidChainStep(
+      previousValue: previousValue,
+      nextValue: value,
+      isFirstChainStep: isFirstChainStep,
+    )) {
       return _snapshot;
     }
 
@@ -455,9 +470,18 @@ class LinkNumberEngine {
     );
   }
 
-  bool _isValidChainStep({required int previousValue, required int nextValue}) {
+  bool _isValidChainStep({
+    required int previousValue,
+    required int nextValue,
+    required bool isFirstChainStep,
+  }) {
     if (previousValue <= 0 || nextValue <= 0) {
       return false;
+    }
+
+    // The first extension must keep the same value (e.g. 4 -> 4).
+    if (isFirstChainStep) {
+      return nextValue == previousValue;
     }
 
     if (nextValue == previousValue) {
@@ -505,39 +529,81 @@ class LinkNumberEngine {
 
     board[anchorCell.row][anchorCell.column] = mergedValue;
 
+    final feverCountMultiplier =
+        _snapshot.isLevelMode &&
+            _snapshot.isGoalCountMode &&
+            _snapshot.isFeverActive
+        ? _snapshot.feverMultiplier
+        : 1;
     final goalTargets = _applyGoalProgress(
       mode: _snapshot.goalMode,
       currentTargets: _snapshot.goalTargets,
       progressValues: mergedPathValues,
+      progressMultiplier: feverCountMultiplier,
     );
-    final score = _snapshot.score + mergedValue;
+    final scoreGain =
+        _snapshot.isLevelMode &&
+            _snapshot.isGoalScoreMode &&
+            _snapshot.isFeverActive
+        ? mergedValue * _snapshot.feverMultiplier
+        : mergedValue;
+    final score = _snapshot.score + scoreGain;
 
     _applyGravity(board);
     _spawnNewValues(board, _activeSpawnWeights);
+    _ensureEnoughPlayablePairs(board);
+    final playablePairs = _countPlayablePairs(board);
 
-    if (_countPlayablePairs(board) < _minPlayablePairs) {
-      _injectGuaranteedPairs(board);
-    }
-
-    final movesLeft = math.max(0, _snapshot.movesLeft - 1);
-    final hasWon = _isLevelWon(
-      mode: _snapshot.goalMode,
-      goalTargets: goalTargets,
-      score: score,
-      scoreTarget: _snapshot.scoreTarget,
+    final movesLeft = _isEndlessMode
+        ? _snapshot.movesLeft
+        : math.max(0, _snapshot.movesLeft - 1);
+    final hasWon = _isEndlessMode
+        ? false
+        : _isLevelWon(
+            mode: _snapshot.goalMode,
+            goalTargets: goalTargets,
+            score: score,
+            scoreTarget: _snapshot.scoreTarget,
+          );
+    final hasLost = _isEndlessMode
+        ? playablePairs <= 0
+        : !hasWon && movesLeft <= 0;
+    final didUpdateEndlessBestTile = _updateEndlessBestTile(
+      board: board,
+      mergedValue: mergedValue,
     );
-    final hasLost = !hasWon && movesLeft <= 0;
+    final feverGaugeGain = _calculateFeverGaugeGain(
+      pathLength: path.length,
+      mergedValue: mergedValue,
+    );
+    final (
+      :nextFeverGauge,
+      :nextFeverActive,
+      :nextFeverMergesLeft,
+    ) = _resolveFeverStateAfterMerge(
+      currentGauge: _snapshot.feverGauge,
+      isActive: _snapshot.isFeverActive,
+      mergesLeft: _snapshot.feverMergesLeft,
+      gaugeGain: feverGaugeGain,
+    );
 
     _snapshot = _snapshot.copyWith(
       board: board,
       goalTargets: goalTargets,
       score: score,
       movesLeft: movesLeft,
+      endlessBestTile: _endlessBestTile,
+      feverGauge: nextFeverGauge,
+      isFeverActive: nextFeverActive,
+      feverMergesLeft: nextFeverMergesLeft,
       activePath: const <LinkNumberCell>[],
       activeValue: null,
       hasWon: hasWon,
       hasLost: hasLost,
     );
+    if (didUpdateEndlessBestTile) {
+      unawaited(_persistProgress());
+    }
 
     return _snapshot;
   }
@@ -594,6 +660,7 @@ class LinkNumberEngine {
       currentLevel: _currentLevel,
       coins: _coins,
       stars: _stars,
+      endlessBestTile: _endlessBestTile,
     );
   }
 
@@ -624,9 +691,8 @@ class LinkNumberEngine {
       _swapCharges = math.max(0, _swapCharges - 1);
     }
 
-    if (_countPlayablePairs(board) < _minPlayablePairs) {
-      _injectGuaranteedPairs(board);
-    }
+    _ensureEnoughPlayablePairs(board);
+    final playablePairs = _countPlayablePairs(board);
 
     _snapshot = _snapshot.copyWith(
       board: board,
@@ -636,6 +702,8 @@ class LinkNumberEngine {
       pendingSwapCell: null,
       activePath: const <LinkNumberCell>[],
       activeValue: null,
+      hasWon: false,
+      hasLost: _isEndlessMode ? playablePairs <= 0 : _snapshot.hasLost,
     );
 
     unawaited(_persistProgress());
@@ -681,21 +749,26 @@ class LinkNumberEngine {
     _applyGravity(board);
     _spawnNewValues(board, _activeSpawnWeights);
 
-    if (_countPlayablePairs(board) < _minPlayablePairs) {
-      _injectGuaranteedPairs(board);
-    }
+    _ensureEnoughPlayablePairs(board);
+    final playablePairs = _countPlayablePairs(board);
 
-    final movesLeft = consumeMove
+    final movesLeft = _isEndlessMode
+        ? _snapshot.movesLeft
+        : consumeMove
         ? math.max(0, _snapshot.movesLeft - 1)
         : _snapshot.movesLeft;
     final score = _snapshot.score + scoreGain;
-    final hasWon = _isLevelWon(
-      mode: _snapshot.goalMode,
-      goalTargets: goalTargets,
-      score: score,
-      scoreTarget: _snapshot.scoreTarget,
-    );
-    final hasLost = !hasWon && movesLeft <= 0;
+    final hasWon = _isEndlessMode
+        ? false
+        : _isLevelWon(
+            mode: _snapshot.goalMode,
+            goalTargets: goalTargets,
+            score: score,
+            scoreTarget: _snapshot.scoreTarget,
+          );
+    final hasLost = _isEndlessMode
+        ? playablePairs <= 0
+        : !hasWon && movesLeft <= 0;
 
     _snapshot = _snapshot.copyWith(
       board: board,
@@ -720,6 +793,10 @@ class LinkNumberEngine {
     LinkNumberGoalMode? forcedMode,
     required bool registerMode,
   }) {
+    if (_isEndlessMode) {
+      return _buildEndlessSnapshot(level: level);
+    }
+
     final config = _createLevelConfig(level: level, forcedMode: forcedMode);
     _activeSpawnWeights = config.spawnWeights;
 
@@ -730,12 +807,50 @@ class LinkNumberEngine {
     final board = _createPlayableBoard(config.spawnWeights);
     return LinkNumberSnapshot(
       board: board,
+      playMode: playMode,
       currentLevel: level,
       goalMode: config.goalMode,
       goalTargets: config.goalTargets,
       score: 0,
       scoreTarget: config.scoreTarget,
       movesLeft: config.moves,
+      endlessBestTile: _endlessBestTile,
+      feverGauge: 0,
+      isFeverActive: false,
+      feverMergesLeft: 0,
+      feverMultiplier: _feverMultiplier,
+      coins: _coins,
+      stars: _stars,
+      breakTileCost: _breakTileCost,
+      swapTileCost: _swapTileCost,
+      swapCharges: _swapCharges,
+      activePath: const <LinkNumberCell>[],
+      activeValue: null,
+      selectedSkill: null,
+      pendingSwapCell: null,
+      hasWon: false,
+      hasLost: false,
+    );
+  }
+
+  LinkNumberSnapshot _buildEndlessSnapshot({required int level}) {
+    final spawnWeights = _spawnWeightsForLevel(level);
+    _activeSpawnWeights = spawnWeights;
+    final board = _createPlayableBoard(spawnWeights);
+    return LinkNumberSnapshot(
+      board: board,
+      playMode: playMode,
+      currentLevel: level,
+      goalMode: LinkNumberGoalMode.goalScore,
+      goalTargets: const <LinkNumberGoalTarget>[],
+      score: 0,
+      scoreTarget: 0,
+      movesLeft: 0,
+      endlessBestTile: _endlessBestTile,
+      feverGauge: 0,
+      isFeverActive: false,
+      feverMergesLeft: 0,
+      feverMultiplier: _feverMultiplier,
       coins: _coins,
       stars: _stars,
       breakTileCost: _breakTileCost,
@@ -1164,6 +1279,43 @@ class LinkNumberEngine {
     }
   }
 
+  void _ensureEnoughPlayablePairs(List<List<int>> board) {
+    if (_isEndlessMode) {
+      return;
+    }
+    if (_countPlayablePairs(board) < _minPlayablePairs) {
+      _injectGuaranteedPairs(board);
+    }
+  }
+
+  bool _updateEndlessBestTile({
+    required List<List<int>> board,
+    required int mergedValue,
+  }) {
+    if (!_isEndlessMode) {
+      return false;
+    }
+    final bestOnBoard = _maxBoardValue(board);
+    final candidate = math.max(mergedValue, bestOnBoard);
+    if (candidate <= _endlessBestTile) {
+      return false;
+    }
+    _endlessBestTile = candidate;
+    return true;
+  }
+
+  int _maxBoardValue(List<List<int>> board) {
+    int best = 0;
+    for (final row in board) {
+      for (final value in row) {
+        if (value > best) {
+          best = value;
+        }
+      }
+    }
+    return best;
+  }
+
   int _pickSpawnValue({
     required List<List<int>> board,
     required int row,
@@ -1314,6 +1466,7 @@ class LinkNumberEngine {
     required LinkNumberGoalMode mode,
     required List<LinkNumberGoalTarget> currentTargets,
     required List<int> progressValues,
+    int progressMultiplier = 1,
   }) {
     if (mode != LinkNumberGoalMode.goalCount) {
       return currentTargets;
@@ -1328,7 +1481,10 @@ class LinkNumberEngine {
       if (remain == null || remain <= 0) {
         continue;
       }
-      remainingByValue[value] = math.max(0, remain - 1);
+      remainingByValue[value] = math.max(
+        0,
+        remain - math.max(1, progressMultiplier),
+      );
     }
 
     return currentTargets
@@ -1395,6 +1551,63 @@ class LinkNumberEngine {
         board[row][column] = 0;
       }
     }
+  }
+
+  int _calculateFeverGaugeGain({
+    required int pathLength,
+    required int mergedValue,
+  }) {
+    if (_isEndlessMode || !_snapshot.isLevelMode) {
+      return 0;
+    }
+    final chainBonus = math.max(0, pathLength - 2) * 8;
+    final valueBonus = math.min(24, mergedValue.bitLength * 2);
+    return 14 + chainBonus + valueBonus;
+  }
+
+  ({int nextFeverGauge, bool nextFeverActive, int nextFeverMergesLeft})
+  _resolveFeverStateAfterMerge({
+    required int currentGauge,
+    required bool isActive,
+    required int mergesLeft,
+    required int gaugeGain,
+  }) {
+    if (_isEndlessMode || !_snapshot.isLevelMode) {
+      return (
+        nextFeverGauge: 0,
+        nextFeverActive: false,
+        nextFeverMergesLeft: 0,
+      );
+    }
+
+    var nextGauge = (math.max(0, currentGauge) + math.max(0, gaugeGain))
+        .toInt();
+    var nextActive = isActive;
+    var nextMergesLeft = math.max(0, mergesLeft);
+
+    if (nextActive) {
+      nextMergesLeft = math.max(0, nextMergesLeft - 1);
+      if (nextMergesLeft == 0) {
+        nextActive = false;
+      }
+      return (
+        nextFeverGauge: nextGauge,
+        nextFeverActive: nextActive,
+        nextFeverMergesLeft: nextMergesLeft,
+      );
+    }
+
+    if (nextGauge >= _feverThreshold) {
+      nextGauge -= _feverThreshold;
+      nextActive = true;
+      nextMergesLeft = _feverMergesPerActivation;
+    }
+
+    return (
+      nextFeverGauge: nextGauge,
+      nextFeverActive: nextActive,
+      nextFeverMergesLeft: nextMergesLeft,
+    );
   }
 }
 

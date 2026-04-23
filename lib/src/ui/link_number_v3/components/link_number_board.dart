@@ -43,6 +43,7 @@ class LinkNumberBoard extends StatefulWidget {
     required this.onRetry,
     required this.onNextLevel,
     required this.onWatchRewardAd,
+    required this.canWatchRewardAd,
     required this.winRewardCoins,
     this.tutorialFocusCell,
     this.enableDropCascade = true,
@@ -58,6 +59,7 @@ class LinkNumberBoard extends StatefulWidget {
   final VoidCallback onRetry;
   final VoidCallback onNextLevel;
   final VoidCallback onWatchRewardAd;
+  final bool canWatchRewardAd;
   final int winRewardCoins;
   final LinkNumberCell? tutorialFocusCell;
   final bool enableDropCascade;
@@ -81,7 +83,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
   static const Duration _dropCascadeDuration = Duration(milliseconds: 460);
   static const Duration _tilePopDuration = Duration(milliseconds: 340);
   static const Duration _tilePopDelayAfterMerge = Duration(milliseconds: 190);
-  static const Duration _selectedSfxMaxDuration = Duration(milliseconds: 82);
+  static const Duration _selectedSfxMaxDuration = Duration(milliseconds: 260);
   static const double _defaultBurstStepFraction = 0.085;
   static const double _defaultBurstWindowFraction = 0.56;
   static const int _mergeBurstColumns = 6;
@@ -98,6 +100,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
   late final AnimationController _skillFxController;
   late final AnimationController _swapFxController;
   late final AnimationController _tutorialGuideController;
+  late final AudioPlayer _selectedSfxFallbackPlayer;
   AudioPool? _selectedSfxPool;
 
   Set<LinkNumberCell> _poppingCells = <LinkNumberCell>{};
@@ -170,6 +173,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
+    _selectedSfxFallbackPlayer = AudioPlayer();
     unawaited(_initSfxPools());
 
     _syncPathFlowAnimation(widget.snapshot);
@@ -220,6 +224,7 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
     if (selectedPool != null) {
       unawaited(selectedPool.dispose());
     }
+    unawaited(_selectedSfxFallbackPlayer.dispose());
     super.dispose();
   }
 
@@ -835,10 +840,24 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
   }
 
   Future<void> _playSelectedSfx() async {
+    if (_selectedSfxPool == null) {
+      await _playSelectedSfxFallback();
+      return;
+    }
     await _playPoolOneShot(
       _selectedSfxPool,
       maxDuration: _selectedSfxMaxDuration,
     );
+  }
+
+  Future<void> _playSelectedSfxFallback() async {
+    try {
+      await _selectedSfxFallbackPlayer.stop();
+      await _selectedSfxFallbackPlayer.play(
+        AssetSource(_toAudioAssetSourcePath(AppAssets.linkNumberPopCellSfxMp3)),
+        mode: PlayerMode.mediaPlayer,
+      );
+    } catch (_) {}
   }
 
   void _playMergeDestroySfx({required int destroyedCount}) {
@@ -870,17 +889,21 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
   }
 
   Future<void> _initSfxPools() async {
-    final selectedPool = await AudioPool.createFromAsset(
-      path: _toAudioAssetSourcePath(AppAssets.linkNumberPopCellSfxMp3),
-      minPlayers: 8,
-      maxPlayers: 24,
-      playerMode: PlayerMode.lowLatency,
-    );
-    if (!mounted) {
-      await selectedPool.dispose();
-      return;
+    try {
+      final selectedPool = await AudioPool.createFromAsset(
+        path: _toAudioAssetSourcePath(AppAssets.linkNumberPopCellSfxMp3),
+        minPlayers: 4,
+        maxPlayers: 16,
+        playerMode: PlayerMode.lowLatency,
+      );
+      if (!mounted) {
+        await selectedPool.dispose();
+        return;
+      }
+      _selectedSfxPool = selectedPool;
+    } catch (_) {
+      _selectedSfxPool = null;
     }
-    _selectedSfxPool = selectedPool;
   }
 
   String _toAudioAssetSourcePath(String assetPath) {
@@ -2194,10 +2217,13 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
                           LinkNumberResultOverlay(
                             hasWon: snapshot.hasWon,
                             currentLevel: snapshot.currentLevel,
+                            isEndlessMode: snapshot.isEndlessMode,
+                            endlessBestTile: snapshot.endlessBestTile,
                             rewardCoins: widget.winRewardCoins,
                             onRetry: widget.onRetry,
                             onNextLevel: widget.onNextLevel,
                             onWatchRewardAd: widget.onWatchRewardAd,
+                            canWatchRewardAd: widget.canWatchRewardAd,
                           ),
                       ],
                     ),

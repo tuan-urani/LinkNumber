@@ -21,7 +21,14 @@ class _DummyRoutePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Center(child: Text(label)));
+    final args = Get.arguments;
+    var mode = '-';
+    if (args is Map<String, dynamic>) {
+      mode = '${args['playMode'] ?? '-'}';
+    } else if (args is Map) {
+      mode = '${args['playMode'] ?? '-'}';
+    }
+    return Scaffold(body: Center(child: Text('$label:$mode')));
   }
 }
 
@@ -61,6 +68,6 @@ void main() {
 
     await tester.tap(find.byType(GameMenuPlayButton));
     await tester.pumpAndSettle();
-    expect(find.text('link-number-v3'), findsOneWidget);
+    expect(find.text('link-number-v3:level'), findsOneWidget);
   });
 }

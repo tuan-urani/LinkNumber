@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 import 'package:flow_connection/src/extensions/int_extensions.dart';
+import 'package:flow_connection/src/locale/locale_key.dart';
 import 'package:flow_connection/src/ui/link_number_v3/components/link_number_v3_tile.dart';
 import 'package:flow_connection/src/ui/link_number_v3/interactor/link_number_snapshot.dart';
 import 'package:flow_connection/src/utils/app_colors.dart';
@@ -26,6 +28,7 @@ class LinkNumberHeaderPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final panelHeight = compact ? 94.0 : 102.0;
+    final isEndlessMode = snapshot.isEndlessMode;
 
     return SizedBox(
       height: panelHeight,
@@ -36,11 +39,13 @@ class LinkNumberHeaderPanel extends StatelessWidget {
             child: _HeaderPanelCard(
               compact: compact,
               accentColor: AppColors.colorFFE53E,
-              child: _GoalBody(
-                compact: compact,
-                snapshot: snapshot,
-                goalDisplayValue: _goalDisplayValue(),
-              ),
+              child: isEndlessMode
+                  ? _EndlessBody(compact: compact, snapshot: snapshot)
+                  : _GoalBody(
+                      compact: compact,
+                      snapshot: snapshot,
+                      goalDisplayValue: _goalDisplayValue(),
+                    ),
             ),
           ),
           SizedBox(width: compact ? 8 : 10),
@@ -48,11 +53,90 @@ class LinkNumberHeaderPanel extends StatelessWidget {
             child: _HeaderPanelCard(
               compact: compact,
               accentColor: AppColors.white,
-              child: _CurrentBody(compact: compact, snapshot: snapshot),
+              child: _CurrentBody(
+                compact: compact,
+                snapshot: snapshot,
+                showMovesFallback: !isEndlessMode,
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _EndlessBody extends StatelessWidget {
+  const _EndlessBody({required this.compact, required this.snapshot});
+
+  final bool compact;
+  final LinkNumberSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final bestTile = snapshot.endlessBestTile;
+    final scoreText = '${LocaleKey.linkNumberScore.tr}: ${snapshot.score}';
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        SizedBox(
+          width: compact ? 42 : 48,
+          height: compact ? 42 : 48,
+          child: bestTile > 0
+              ? LinkNumberV3Tile(
+                  value: bestTile,
+                  compactText: true,
+                  showBorder: false,
+                  valueTextScale: 1.1,
+                  cornerRadius: compact ? 9 : 10,
+                )
+              : DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: (compact ? 9 : 10).borderRadiusAll,
+                    color: AppColors.black.withValues(alpha: 0.2),
+                    border: Border.all(
+                      color: AppColors.white.withValues(alpha: 0.22),
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '-',
+                      style: AppStyles.h2(
+                        color: AppColors.white.withValues(alpha: 0.86),
+                        fontWeight: FontWeight.w700,
+                      ).copyWith(height: 1),
+                    ),
+                  ),
+                ),
+        ),
+        (compact ? 8 : 10).width,
+        Flexible(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                LocaleKey.gameMenuBestTile.tr.toUpperCase(),
+                style: AppStyles.bodySmall(
+                  color: AppColors.colorFFE53E,
+                  fontWeight: FontWeight.w800,
+                ).copyWith(height: 1),
+              ),
+              (compact ? 3 : 4).height,
+              Text(
+                scoreText,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppStyles.bodySmall(
+                  color: AppColors.white.withValues(alpha: 0.92),
+                  fontWeight: FontWeight.w700,
+                ).copyWith(height: 1),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -230,15 +314,39 @@ class _GoalTargetChip extends StatelessWidget {
 }
 
 class _CurrentBody extends StatelessWidget {
-  const _CurrentBody({required this.compact, required this.snapshot});
+  const _CurrentBody({
+    required this.compact,
+    required this.snapshot,
+    required this.showMovesFallback,
+  });
 
   final bool compact;
   final LinkNumberSnapshot snapshot;
+  final bool showMovesFallback;
 
   @override
   Widget build(BuildContext context) {
     final hasActiveSelection = snapshot.activePath.isNotEmpty;
     if (!hasActiveSelection) {
+      if (!showMovesFallback) {
+        return Center(
+          child: Text(
+            '-',
+            textAlign: TextAlign.center,
+            style:
+                (compact
+                        ? AppStyles.h3(
+                            color: AppColors.white.withValues(alpha: 0.92),
+                            fontWeight: FontWeight.w700,
+                          )
+                        : AppStyles.h2(
+                            color: AppColors.white.withValues(alpha: 0.92),
+                            fontWeight: FontWeight.w700,
+                          ))
+                    .copyWith(height: 1),
+          ),
+        );
+      }
       return Center(
         child: Text(
           '${snapshot.movesLeft}',
@@ -260,6 +368,24 @@ class _CurrentBody extends StatelessWidget {
 
     final preview = snapshot.currentChainPreviewValue;
     if (preview == null) {
+      if (!showMovesFallback) {
+        return Center(
+          child: Text(
+            '-',
+            style:
+                (compact
+                        ? AppStyles.h3(
+                            color: AppColors.white.withValues(alpha: 0.74),
+                            fontWeight: FontWeight.w700,
+                          )
+                        : AppStyles.h2(
+                            color: AppColors.white.withValues(alpha: 0.74),
+                            fontWeight: FontWeight.w700,
+                          ))
+                    .copyWith(height: 1),
+          ),
+        );
+      }
       return Center(
         child: Text(
           '${snapshot.movesLeft}',

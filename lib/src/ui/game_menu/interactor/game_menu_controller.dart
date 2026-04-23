@@ -7,6 +7,7 @@ import 'package:flow_connection/src/core/managers/game_progress_manager.dart';
 import 'package:flow_connection/src/locale/locale_key.dart';
 import 'package:flow_connection/src/ui/game_menu/interactor/game_menu_item.dart';
 import 'package:flow_connection/src/ui/link_number/interactor/link_number_gif_preloader.dart';
+import 'package:flow_connection/src/ui/link_number_v3/interactor/link_number_snapshot.dart';
 import 'package:flow_connection/src/utils/app_pages.dart';
 
 class GameMenuController extends GetxController {
@@ -16,6 +17,7 @@ class GameMenuController extends GetxController {
   final GameProgressManager _progressManager = Get.find<GameProgressManager>();
   final LinkNumberGifPreloader _gifPreloader = LinkNumberGifPreloader.instance;
   final RxBool _isSplashLoading = true.obs;
+  final Rx<LinkNumberPlayMode> _selectedMode = LinkNumberPlayMode.level.obs;
 
   final List<GameMenuItem> gameItems = const <GameMenuItem>[
     GameMenuItem(
@@ -28,7 +30,9 @@ class GameMenuController extends GetxController {
   int get currentLevel => _progressManager.currentLevel;
   int get coins => _progressManager.coins;
   int get stars => _progressManager.stars;
+  int get endlessBestTile => _progressManager.endlessBestTile;
   bool get isSplashLoading => _isSplashLoading.value;
+  LinkNumberPlayMode get selectedMode => _selectedMode.value;
 
   @override
   void onInit() {
@@ -63,5 +67,16 @@ class GameMenuController extends GetxController {
     } catch (error, stackTrace) {
       debugPrint('LinkNumber GIF warm-up failed: $error\n$stackTrace');
     }
+  }
+
+  void selectMode(LinkNumberPlayMode mode) {
+    _selectedMode.value = mode;
+  }
+
+  void openSelectedMode() {
+    Get.toNamed(
+      AppPages.linkNumberV3,
+      arguments: <String, Object>{'playMode': selectedMode.routeValue},
+    );
   }
 }

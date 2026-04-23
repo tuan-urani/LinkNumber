@@ -68,11 +68,13 @@ class LinkNumberController extends GetxController {
     GameProgressManager? progressManager,
     AppShared? appShared,
     AdmobManager? admobManager,
+    LinkNumberPlayMode playMode = LinkNumberPlayMode.level,
   }) : _engine =
            engine ??
            LinkNumberEngine(
              progressManager:
                  progressManager ?? Get.find<GameProgressManager>(),
+             playMode: playMode,
            ),
        _appShared = appShared ?? Get.find<AppShared>(),
        _admobManager = admobManager ?? Get.find<AdmobManager>();
@@ -92,7 +94,8 @@ class LinkNumberController extends GetxController {
   bool get isInteractiveTutorialActive => _isInteractiveTutorialActive.value;
   bool get showReadyToPlayFx => _showReadyToPlayFx.value;
   bool get shouldReserveAdBannerSpace => _admobManager.isAvailable;
-  int get levelWinRewardCoins => LinkNumberEngine.levelWinRewardCoins;
+  int get levelWinRewardCoins =>
+      snapshot.value.isEndlessMode ? 0 : LinkNumberEngine.levelWinRewardCoins;
 
   _TutorialStage get _currentTutorialStage {
     final index = _tutorialStageIndex.value.clamp(
@@ -258,6 +261,9 @@ class LinkNumberController extends GetxController {
         _showReadyToPlayFx.value) {
       return;
     }
+    if (snapshot.value.isEndlessMode) {
+      return;
+    }
     if (_isRewardAdFlowInProgress || !snapshot.value.hasLost) {
       return;
     }
@@ -291,6 +297,13 @@ class LinkNumberController extends GetxController {
   }
 
   void _initFirstPlayTutorial() {
+    if (snapshot.value.isEndlessMode) {
+      _isInteractiveTutorialActive.value = false;
+      _showReadyToPlayFx.value = false;
+      _tutorialStageIndex.value = 0;
+      _tutorialTapStep.value = 0;
+      return;
+    }
     final savedVersion = _appShared.getLinkNumberV3GuidedTutorialVersion();
     final isCompleted = savedVersion >= _guidedTutorialVersion;
     if (isCompleted) {
@@ -326,12 +339,18 @@ class LinkNumberController extends GetxController {
     final tutorialBoard = board ?? _cloneBoard(stage.board);
     return LinkNumberSnapshot(
       board: tutorialBoard,
+      playMode: base.playMode,
       currentLevel: base.currentLevel,
       goalMode: LinkNumberGoalMode.goalCount,
       goalTargets: goalTargets ?? stage.goalTargets,
       score: score ?? 0,
       scoreTarget: 0,
       movesLeft: movesLeft ?? stage.moves,
+      endlessBestTile: base.endlessBestTile,
+      feverGauge: 0,
+      isFeverActive: false,
+      feverMergesLeft: 0,
+      feverMultiplier: 2,
       coins: base.coins,
       stars: base.stars,
       breakTileCost: base.breakTileCost,

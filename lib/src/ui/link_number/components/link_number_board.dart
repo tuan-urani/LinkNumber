@@ -1533,8 +1533,16 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
             final progress = Curves.easeInOutCubic.transform(
               _swapFxController.value,
             );
-            final firstCurrent = Offset.lerp(firstCenter, secondCenter, progress);
-            final secondCurrent = Offset.lerp(secondCenter, firstCenter, progress);
+            final firstCurrent = Offset.lerp(
+              firstCenter,
+              secondCenter,
+              progress,
+            );
+            final secondCurrent = Offset.lerp(
+              secondCenter,
+              firstCenter,
+              progress,
+            );
             if (firstCurrent == null || secondCurrent == null) {
               return const SizedBox.shrink();
             }
@@ -2079,9 +2087,11 @@ class _LinkNumberBoardState extends State<LinkNumberBoard>
                                                         .contains(cell);
                                                 final hiddenBySwap =
                                                     (_swapFirstCell != null &&
-                                                        _swapFirstCell == cell) ||
+                                                        _swapFirstCell ==
+                                                            cell) ||
                                                     (_swapSecondCell != null &&
-                                                        _swapSecondCell == cell);
+                                                        _swapSecondCell ==
+                                                            cell);
                                                 final tileValue =
                                                     snapshot.board[row][column];
                                                 return Expanded(

@@ -4,6 +4,28 @@ enum LinkNumberGoalMode { goalCount, goalScore }
 
 enum LinkNumberSkillType { breakTile, swapTiles }
 
+enum LinkNumberFeverAffects { count, score }
+
+enum LinkNumberPlayMode {
+  level,
+  endless;
+
+  static LinkNumberPlayMode fromRouteArgument(Object? value) {
+    if (value is LinkNumberPlayMode) {
+      return value;
+    }
+    if (value is String && value.toLowerCase() == 'endless') {
+      return LinkNumberPlayMode.endless;
+    }
+    return LinkNumberPlayMode.level;
+  }
+
+  String get routeValue => switch (this) {
+    LinkNumberPlayMode.level => 'level',
+    LinkNumberPlayMode.endless => 'endless',
+  };
+}
+
 class LinkNumberGoalTarget {
   const LinkNumberGoalTarget({
     required this.value,
@@ -57,12 +79,18 @@ class LinkNumberCell {
 class LinkNumberSnapshot {
   const LinkNumberSnapshot({
     required this.board,
+    required this.playMode,
     required this.currentLevel,
     required this.goalMode,
     required this.goalTargets,
     required this.score,
     required this.scoreTarget,
     required this.movesLeft,
+    required this.endlessBestTile,
+    required this.feverGauge,
+    required this.isFeverActive,
+    required this.feverMergesLeft,
+    required this.feverMultiplier,
     required this.coins,
     required this.stars,
     required this.breakTileCost,
@@ -79,12 +107,18 @@ class LinkNumberSnapshot {
   static const Object _unset = Object();
 
   final List<List<int>> board;
+  final LinkNumberPlayMode playMode;
   final int currentLevel;
   final LinkNumberGoalMode goalMode;
   final List<LinkNumberGoalTarget> goalTargets;
   final int score;
   final int scoreTarget;
   final int movesLeft;
+  final int endlessBestTile;
+  final int feverGauge;
+  final bool isFeverActive;
+  final int feverMergesLeft;
+  final int feverMultiplier;
   final int coins;
   final int stars;
   final int breakTileCost;
@@ -98,10 +132,16 @@ class LinkNumberSnapshot {
   final bool hasLost;
 
   bool get isGameOver => hasWon || hasLost;
+  bool get isEndlessMode => playMode == LinkNumberPlayMode.endless;
+  bool get isLevelMode => playMode == LinkNumberPlayMode.level;
 
   bool get isGoalCountMode => goalMode == LinkNumberGoalMode.goalCount;
 
   bool get isGoalScoreMode => goalMode == LinkNumberGoalMode.goalScore;
+
+  LinkNumberFeverAffects get feverAffects => isGoalCountMode
+      ? LinkNumberFeverAffects.count
+      : LinkNumberFeverAffects.score;
 
   int get remainingScore => math.max(0, scoreTarget - score);
 
@@ -154,12 +194,18 @@ class LinkNumberSnapshot {
 
   LinkNumberSnapshot copyWith({
     List<List<int>>? board,
+    LinkNumberPlayMode? playMode,
     int? currentLevel,
     LinkNumberGoalMode? goalMode,
     List<LinkNumberGoalTarget>? goalTargets,
     int? score,
     int? scoreTarget,
     int? movesLeft,
+    int? endlessBestTile,
+    int? feverGauge,
+    bool? isFeverActive,
+    int? feverMergesLeft,
+    int? feverMultiplier,
     int? coins,
     int? stars,
     int? breakTileCost,
@@ -174,12 +220,18 @@ class LinkNumberSnapshot {
   }) {
     return LinkNumberSnapshot(
       board: board ?? this.board,
+      playMode: playMode ?? this.playMode,
       currentLevel: currentLevel ?? this.currentLevel,
       goalMode: goalMode ?? this.goalMode,
       goalTargets: goalTargets ?? this.goalTargets,
       score: score ?? this.score,
       scoreTarget: scoreTarget ?? this.scoreTarget,
       movesLeft: movesLeft ?? this.movesLeft,
+      endlessBestTile: endlessBestTile ?? this.endlessBestTile,
+      feverGauge: feverGauge ?? this.feverGauge,
+      isFeverActive: isFeverActive ?? this.isFeverActive,
+      feverMergesLeft: feverMergesLeft ?? this.feverMergesLeft,
+      feverMultiplier: feverMultiplier ?? this.feverMultiplier,
       coins: coins ?? this.coins,
       stars: stars ?? this.stars,
       breakTileCost: breakTileCost ?? this.breakTileCost,

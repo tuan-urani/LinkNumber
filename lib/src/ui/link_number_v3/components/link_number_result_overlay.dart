@@ -17,7 +17,10 @@ class LinkNumberResultOverlay extends StatefulWidget {
     required this.onRetry,
     required this.onNextLevel,
     required this.onWatchRewardAd,
+    required this.canWatchRewardAd,
+    required this.isEndlessMode,
     required this.currentLevel,
+    required this.endlessBestTile,
     required this.rewardCoins,
     super.key,
   });
@@ -26,7 +29,10 @@ class LinkNumberResultOverlay extends StatefulWidget {
   final VoidCallback onRetry;
   final VoidCallback onNextLevel;
   final VoidCallback onWatchRewardAd;
+  final bool canWatchRewardAd;
+  final bool isEndlessMode;
   final int currentLevel;
+  final int endlessBestTile;
   final int rewardCoins;
 
   @override
@@ -59,7 +65,9 @@ class _LinkNumberResultOverlayState extends State<LinkNumberResultOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    final title = widget.hasWon
+    final title = widget.isEndlessMode
+        ? LocaleKey.linkNumberEndlessGameOver.tr.toUpperCase()
+        : widget.hasWon
         ? 'COMPLETE'
         : LocaleKey.linkNumberLossOopsTitle.tr.toUpperCase();
     final titleColor = widget.hasWon ? AppColors.white : AppColors.colorFFF4F2;
@@ -171,6 +179,10 @@ class _LinkNumberResultOverlayState extends State<LinkNumberResultOverlay> {
                                         currentLevel: widget.currentLevel,
                                         rewardCoins: widget.rewardCoins,
                                       )
+                                    : widget.isEndlessMode
+                                    ? _EndlessLoseSummary(
+                                        bestTile: widget.endlessBestTile,
+                                      )
                                     : Center(
                                         child: FittedBox(
                                           fit: BoxFit.scaleDown,
@@ -222,10 +234,12 @@ class _LinkNumberResultOverlayState extends State<LinkNumberResultOverlay> {
                             else
                               Column(
                                 children: <Widget>[
-                                  _LossWatchAdButton(
-                                    onPressed: widget.onWatchRewardAd,
-                                  ),
-                                  10.height,
+                                  if (widget.canWatchRewardAd) ...<Widget>[
+                                    _LossWatchAdButton(
+                                      onPressed: widget.onWatchRewardAd,
+                                    ),
+                                    10.height,
+                                  ],
                                   _ResultActionButton(
                                     label: LocaleKey.linkNumberPlayAgain.tr,
                                     onPressed: widget.onRetry,
@@ -337,6 +351,30 @@ class _WinRewardSummary extends StatelessWidget {
               child: Image.asset(AppAssets.gameMenuCoinPng, fit: BoxFit.fill),
             ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+class _EndlessLoseSummary extends StatelessWidget {
+  const _EndlessLoseSummary({required this.bestTile});
+
+  final int bestTile;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        Icon(Icons.grid_view_rounded, color: AppColors.colorFFE53E, size: 26),
+        10.width,
+        Text(
+          '${LocaleKey.gameMenuBestTile.tr.toUpperCase()}: $bestTile',
+          style: AppStyles.h3(
+            color: AppColors.white,
+            fontWeight: FontWeight.w800,
+          ).copyWith(height: 1),
         ),
       ],
     );

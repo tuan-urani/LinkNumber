@@ -89,6 +89,7 @@ class LinkNumberV3Page extends GetView<LinkNumberController> {
                     final isWide = constraints.maxWidth >= 980;
                     final skillPanelHeight = isWide ? 94.0 : 82.0;
                     final shouldShowLowMovesWarning =
+                        snapshot.isLevelMode &&
                         !snapshot.isGameOver &&
                         snapshot.movesLeft > 0 &&
                         snapshot.movesLeft <= 3;
@@ -326,6 +327,8 @@ class _ReadyToPlayGate extends StatelessWidget {
 }
 
 class _BoardArea extends StatelessWidget {
+  static const int _feverMergesPerActivation = 3;
+
   const _BoardArea({
     required this.controller,
     required this.snapshot,
@@ -340,6 +343,21 @@ class _BoardArea extends StatelessWidget {
   final bool enableDropCascade;
   final int winRewardCoins;
 
+  double _resolveFeverBorderProgress() {
+    if (!snapshot.isLevelMode) {
+      return 0;
+    }
+
+    if (snapshot.isFeverActive) {
+      return (snapshot.feverMergesLeft / _feverMergesPerActivation).clamp(
+        0.0,
+        1.0,
+      );
+    }
+
+    return (snapshot.feverGauge / 100).clamp(0.0, 1.0);
+  }
+
   @override
   Widget build(BuildContext context) {
     final rows = snapshot.board.length;
@@ -347,7 +365,10 @@ class _BoardArea extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    return DecoratedBox(
+    final shouldShowFeverBorder = snapshot.isLevelMode;
+    final feverProgress = _resolveFeverBorderProgress();
+
+    final boardShell = DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: 26.borderRadiusAll,
         gradient: LinearGradient(
@@ -385,9 +406,214 @@ class _BoardArea extends StatelessWidget {
               : controller.restartLevel,
           onNextLevel: controller.nextLevel,
           onWatchRewardAd: controller.continueWithRewardAdMoves,
+          canWatchRewardAd: snapshot.isLevelMode,
           winRewardCoins: winRewardCoins,
         ),
       ),
     );
+
+    if (!shouldShowFeverBorder) {
+      return boardShell;
+    }
+
+    return Stack(
+      clipBehavior: Clip.none,
+      fit: StackFit.expand,
+      children: <Widget>[
+        Padding(padding: 9.paddingAll, child: boardShell),
+        IgnorePointer(
+          child: Padding(
+            padding: 9.paddingAll,
+            child: _FeverBorderProgressOverlay(
+              progress: feverProgress,
+              isActive: snapshot.isFeverActive,
+            ),
+          ),
+        ),
+        Positioned(
+          left: 0,
+          top: 14,
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: 999.borderRadiusAll,
+                color: AppColors.color111827.withValues(alpha: 0.74),
+                border: Border.all(
+                  color: snapshot.isFeverActive
+                      ? AppColors.colorFFE53E.withValues(alpha: 0.9)
+                      : AppColors.color18A9FF.withValues(alpha: 0.9),
+                ),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color:
+                        (snapshot.isFeverActive
+                                ? AppColors.colorFFE53E
+                                : AppColors.color18A9FF)
+                            .withValues(alpha: 0.32),
+                    blurRadius: 8,
+                    spreadRadius: 0.8,
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                child: Text(
+                  '${(feverProgress * 100).round()}%',
+                  style: AppStyles.bodySmall(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FeverBorderProgressOverlay extends StatelessWidget {
+  const _FeverBorderProgressOverlay({
+    required this.progress,
+    required this.isActive,
+  });
+
+  static const double _stroke = 3;
+
+  final double progress;
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _FeverBorderProgressPainter(
+        progress: progress,
+        isActive: isActive,
+        strokeWidth: _stroke,
+      ),
+      child: const SizedBox.expand(),
+    );
+  }
+}
+
+class _FeverBorderProgressPainter extends CustomPainter {
+  const _FeverBorderProgressPainter({
+    required this.progress,
+    required this.isActive,
+    required this.strokeWidth,
+  });
+
+  final double progress;
+  final bool isActive;
+  final double strokeWidth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) {
+      return;
+    }
+
+    final clampedProgress = progress.clamp(0.0, 1.0);
+    final progressColor = isActive
+        ? AppColors.colorFFE53E
+        : AppColors.colorFF8B2F;
+    final trackColor = AppColors.white.withValues(alpha: 0.28);
+    final glowColor = progressColor.withValues(alpha: isActive ? 0.74 : 0.68);
+    final borderRadius = Radius.circular(26);
+    final inset = (strokeWidth / 2) + 0.8;
+    final rect = Offset.zero & size;
+    final drawRect = rect.deflate(inset);
+    if (drawRect.width <= 0 || drawRect.height <= 0) {
+      return;
+    }
+
+    final rRect = RRect.fromRectAndRadius(drawRect, borderRadius);
+    final borderPath = Path()..addRRect(rRect);
+    final metric = borderPath.computeMetrics().first;
+
+    final trackGlowPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth * 0.92
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = trackColor.withValues(alpha: 0.34)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.2);
+    canvas.drawPath(borderPath, trackGlowPaint);
+
+    final trackPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth * 0.56
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = trackColor;
+    canvas.drawPath(borderPath, trackPaint);
+
+    if (clampedProgress <= 0) {
+      return;
+    }
+
+    final progressLength = metric.length * clampedProgress;
+    final progressPath = metric.extractPath(
+      0,
+      progressLength,
+      startWithMoveTo: true,
+    );
+
+    final progressGlowPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth + 3
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = glowColor
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.2);
+    canvas.drawPath(progressPath, progressGlowPaint);
+
+    final progressPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: isActive
+            ? <Color>[
+                AppColors.colorFFE53E,
+                AppColors.colorFFCA2A,
+                AppColors.colorFF8B2F,
+              ]
+            : <Color>[
+                AppColors.color18A9FF,
+                AppColors.colorFF8B2F,
+                AppColors.colorFFCA2A,
+              ],
+        stops: const <double>[0.0, 0.55, 1.0],
+      ).createShader(drawRect);
+    canvas.drawPath(progressPath, progressPaint);
+
+    final headTangent = metric.getTangentForOffset(progressLength);
+    if (headTangent == null) {
+      return;
+    }
+    final headCenter = headTangent.position;
+    final headRadius = strokeWidth * 0.84;
+    final headGlowPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = glowColor
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5.2);
+    canvas.drawCircle(headCenter, headRadius + 1.8, headGlowPaint);
+
+    final headPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = progressColor;
+    canvas.drawCircle(headCenter, headRadius, headPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _FeverBorderProgressPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.isActive != isActive ||
+        oldDelegate.strokeWidth != strokeWidth;
   }
 }

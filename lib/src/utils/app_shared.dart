@@ -13,6 +13,8 @@ class AppShared {
       '${keyName}_keyLinkNumberCurrentLevel';
   static const String _keyLinkNumberCoins = '${keyName}_keyLinkNumberCoins';
   static const String _keyLinkNumberStars = '${keyName}_keyLinkNumberStars';
+  static const String _keyLinkNumberEndlessBestTile =
+      '${keyName}_keyLinkNumberEndlessBestTile';
   static const String _keyLinkNumberV3TutorialCompleted =
       '${keyName}_keyLinkNumberV3TutorialCompleted';
   static const String _keyLinkNumberV3GuidedTutorialCompleted =
@@ -65,6 +67,13 @@ class AppShared {
 
   int? getLinkNumberStars() => _prefs.getInt(_keyLinkNumberStars);
 
+  Future<void> setLinkNumberEndlessBestTile(int value) async {
+    await _prefs.setInt(_keyLinkNumberEndlessBestTile, value);
+  }
+
+  int? getLinkNumberEndlessBestTile() =>
+      _prefs.getInt(_keyLinkNumberEndlessBestTile);
+
   Future<void> setLinkNumberV3TutorialCompleted(bool completed) async {
     await _prefs.setBool(_keyLinkNumberV3TutorialCompleted, completed);
   }
@@ -93,6 +102,7 @@ class AppShared {
     await _prefs.remove(_keyLinkNumberCurrentLevel);
     await _prefs.remove(_keyLinkNumberCoins);
     await _prefs.remove(_keyLinkNumberStars);
+    await _prefs.remove(_keyLinkNumberEndlessBestTile);
     await _prefs.remove(_keyLinkNumberV3TutorialCompleted);
     await _prefs.remove(_keyLinkNumberV3GuidedTutorialCompleted);
     await _prefs.remove(_keyLinkNumberV3GuidedTutorialVersion);

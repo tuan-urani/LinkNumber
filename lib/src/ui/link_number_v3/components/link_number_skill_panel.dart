@@ -3,8 +3,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:get/get.dart';
 
 import 'package:flow_connection/src/extensions/int_extensions.dart';
+import 'package:flow_connection/src/locale/locale_key.dart';
 import 'package:flow_connection/src/ui/link_number_v3/interactor/link_number_snapshot.dart';
 import 'package:flow_connection/src/utils/app_assets.dart';
 import 'package:flow_connection/src/utils/app_colors.dart';
@@ -82,6 +84,8 @@ class LinkNumberSkillPanel extends StatelessWidget {
             compact: compact,
             level: snapshot.currentLevel,
             progress: _levelProgress(),
+            isEndlessMode: snapshot.isEndlessMode,
+            endlessBestTile: snapshot.endlessBestTile,
           ),
         ),
       ],
@@ -366,16 +370,20 @@ class _LevelProgressBar extends StatelessWidget {
     required this.compact,
     required this.level,
     required this.progress,
+    required this.isEndlessMode,
+    required this.endlessBestTile,
   });
 
   final bool compact;
   final int level;
   final double progress;
+  final bool isEndlessMode;
+  final int endlessBestTile;
 
   @override
   Widget build(BuildContext context) {
     final height = compact ? 46.0 : 52.0;
-    final fill = progress.clamp(0.0, 1.0);
+    final fill = isEndlessMode ? 1.0 : progress.clamp(0.0, 1.0);
 
     return Container(
       height: height,
@@ -430,7 +438,9 @@ class _LevelProgressBar extends StatelessWidget {
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    'LEVEL $level',
+                    isEndlessMode
+                        ? '${LocaleKey.gameMenuBestTile.tr.toUpperCase()} $endlessBestTile'
+                        : '${LocaleKey.gameMenuLevel.tr.toUpperCase()} $level',
                     maxLines: 1,
                     softWrap: false,
                     style:

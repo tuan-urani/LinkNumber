@@ -56,6 +56,14 @@ class LocaleKey {
   static const String linkNumberTutorialBody = 'link_number_tutorial_body';
   static const String linkNumberTutorialSkip = 'link_number_tutorial_skip';
   static const String linkNumberReadyToPlay = 'link_number_ready_to_play';
+  static const String linkNumberEndlessGameOver =
+      'link_number_endless_game_over';
+  static const String linkNumberFeverLabel = 'link_number_fever_label';
+  static const String linkNumberFeverCount = 'link_number_fever_count';
+  static const String linkNumberFeverScore = 'link_number_fever_score';
+  static const String linkNumberFeverMergesLeft =
+      'link_number_fever_merges_left';
+  static const String linkNumberFeverCharge = 'link_number_fever_charge';
   static const String splashLoading = 'splash_loading';
   static const String splashPrivacyPolicy = 'splash_privacy_policy';
   static const String splashTermsOfUse = 'splash_terms_of_use';
@@ -63,6 +71,10 @@ class LocaleKey {
   static const String gameMenuDaily = 'game_menu_daily';
   static const String gameMenuWheel = 'game_menu_wheel';
   static const String gameMenuPlay = 'game_menu_play';
+  static const String gameMenuMode = 'game_menu_mode';
+  static const String gameMenuModeLevel = 'game_menu_mode_level';
+  static const String gameMenuModeEndless = 'game_menu_mode_endless';
+  static const String gameMenuBestTile = 'game_menu_best_tile';
   static const String gameMenuReward = 'game_menu_reward';
   static const String gameMenuLevel = 'game_menu_level';
   static const String gameMenuStars = 'game_menu_stars';
