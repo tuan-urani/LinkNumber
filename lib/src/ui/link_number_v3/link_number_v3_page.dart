@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:flow_connection/src/extensions/int_extensions.dart';
 import 'package:flow_connection/src/locale/locale_key.dart';
 import 'package:flow_connection/src/ui/link_number_v3/components/link_number_game_banner_ad.dart';
+import 'package:flow_connection/src/ui/link_number_v3/components/link_number_result_overlay.dart';
 import 'package:flow_connection/src/ui/link_number_v3/components/link_number_shop_modal.dart';
 import 'package:flow_connection/src/utils/app_assets.dart';
 import 'package:flow_connection/src/ui/link_number_v3/components/link_number_board.dart';
@@ -150,6 +151,23 @@ class LinkNumberV3Page extends GetView<LinkNumberController> {
                       fit: StackFit.expand,
                       children: <Widget>[
                         content,
+                        if (snapshot.isGameOver)
+                          Positioned.fill(
+                            child: LinkNumberResultOverlay(
+                              hasWon: snapshot.hasWon,
+                              currentLevel: snapshot.currentLevel,
+                              isEndlessMode: snapshot.isEndlessMode,
+                              endlessBestTile: snapshot.endlessBestTile,
+                              rewardCoins: controller.levelWinRewardCoins,
+                              onRetry: snapshot.hasLost
+                                  ? controller.retryLevel
+                                  : controller.restartLevel,
+                              onNextLevel: controller.nextLevel,
+                              onWatchRewardAd:
+                                  controller.continueWithRewardAdMoves,
+                              canWatchRewardAd: snapshot.isLevelMode,
+                            ),
+                          ),
                         if (showFeverTriggerFx)
                           Positioned.fill(
                             child: _FeverTriggeredGate(snapshot: snapshot),
@@ -650,6 +668,7 @@ class _BoardArea extends StatelessWidget {
           onWatchRewardAd: controller.continueWithRewardAdMoves,
           canWatchRewardAd: snapshot.isLevelMode,
           winRewardCoins: winRewardCoins,
+          showResultOverlay: false,
         ),
       ),
     );

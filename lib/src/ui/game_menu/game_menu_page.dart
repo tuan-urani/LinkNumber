@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -10,12 +8,10 @@ import 'package:flow_connection/src/ui/game_menu/components/game_menu_modal_test
 import 'package:flow_connection/src/ui/game_menu/components/game_menu_play_button.dart';
 import 'package:flow_connection/src/ui/game_menu/components/game_menu_top_badges.dart';
 import 'package:flow_connection/src/ui/game_menu/interactor/game_menu_controller.dart';
-import 'package:flow_connection/src/ui/link_number_v3/interactor/link_number_snapshot.dart';
 import 'package:flow_connection/src/ui/link_number_v3/components/link_number_result_overlay.dart';
 import 'package:flow_connection/src/ui/link_number_v3/components/link_number_shop_modal.dart';
 import 'package:flow_connection/src/utils/app_assets.dart';
 import 'package:flow_connection/src/utils/app_colors.dart';
-import 'package:flow_connection/src/utils/app_ui_sfx.dart';
 import 'package:flow_connection/src/utils/app_styles.dart';
 
 class GameMenuPage extends GetView<GameMenuController> {
@@ -76,8 +72,6 @@ class GameMenuPage extends GetView<GameMenuController> {
     return Obx(() {
       final level = controller.currentLevel;
       final coins = controller.coins;
-      final endlessBestTile = controller.endlessBestTile;
-      final selectedMode = controller.selectedMode;
       final isSplashLoading = controller.isSplashLoading;
       return Scaffold(
         body: Stack(
@@ -138,9 +132,6 @@ class GameMenuPage extends GetView<GameMenuController> {
                                           'menu_ready',
                                         ),
                                         level: level,
-                                        endlessBestTile: endlessBestTile,
-                                        selectedMode: selectedMode,
-                                        onSelectMode: controller.selectMode,
                                         onPlay: controller.openSelectedMode,
                                         onOpenWinModal: () =>
                                             _showResultModalPreview(
@@ -206,9 +197,6 @@ class _GameMenuReadyState extends StatelessWidget {
   const _GameMenuReadyState({
     super.key,
     required this.level,
-    required this.endlessBestTile,
-    required this.selectedMode,
-    required this.onSelectMode,
     required this.onPlay,
     required this.onOpenWinModal,
     required this.onOpenLoseModal,
@@ -218,9 +206,6 @@ class _GameMenuReadyState extends StatelessWidget {
   static const bool _showModalTestButtons = false;
 
   final int level;
-  final int endlessBestTile;
-  final LinkNumberPlayMode selectedMode;
-  final ValueChanged<LinkNumberPlayMode> onSelectMode;
   final VoidCallback onPlay;
   final VoidCallback onOpenWinModal;
   final VoidCallback onOpenLoseModal;
@@ -232,17 +217,6 @@ class _GameMenuReadyState extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         SizedBox(width: 196, child: _GameMenuLevelCard(level: level)),
-        14.height,
-        _GameMenuModeSelector(
-          selectedMode: selectedMode,
-          onSelectMode: onSelectMode,
-        ),
-        8.height,
-        _GameMenuModeInfo(
-          selectedMode: selectedMode,
-          level: level,
-          endlessBestTile: endlessBestTile,
-        ),
         34.height,
         GameMenuPlayButton(onTap: onPlay),
         if (_showModalTestButtons) ...<Widget>[
@@ -269,137 +243,6 @@ class _GameMenuReadyState extends StatelessWidget {
           ),
         ],
       ],
-    );
-  }
-}
-
-class _GameMenuModeSelector extends StatelessWidget {
-  const _GameMenuModeSelector({
-    required this.selectedMode,
-    required this.onSelectMode,
-  });
-
-  final LinkNumberPlayMode selectedMode;
-  final ValueChanged<LinkNumberPlayMode> onSelectMode;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Text(
-          LocaleKey.gameMenuMode.tr.toUpperCase(),
-          style: AppStyles.h5(
-            color: AppColors.white.withValues(alpha: 0.92),
-            fontWeight: FontWeight.w800,
-          ).copyWith(letterSpacing: 0.9),
-        ),
-        8.height,
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            _ModeChip(
-              selected: selectedMode == LinkNumberPlayMode.level,
-              label: LocaleKey.gameMenuModeLevel.tr,
-              onTap: () => onSelectMode(LinkNumberPlayMode.level),
-            ),
-            8.width,
-            _ModeChip(
-              selected: selectedMode == LinkNumberPlayMode.endless,
-              label: LocaleKey.gameMenuModeEndless.tr,
-              onTap: () => onSelectMode(LinkNumberPlayMode.endless),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _ModeChip extends StatelessWidget {
-  const _ModeChip({
-    required this.selected,
-    required this.label,
-    required this.onTap,
-  });
-
-  final bool selected;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.transparent,
-      child: InkWell(
-        borderRadius: 999.borderRadiusAll,
-        onTap: () {
-          unawaited(AppUiSfx.playButtonTap());
-          onTap();
-        },
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-          decoration: BoxDecoration(
-            borderRadius: 999.borderRadiusAll,
-            gradient: selected
-                ? const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: <Color>[
-                      AppColors.color18A9FF,
-                      AppColors.color0095FF,
-                    ],
-                  )
-                : LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: <Color>[
-                      AppColors.black.withValues(alpha: 0.52),
-                      AppColors.color111827.withValues(alpha: 0.72),
-                    ],
-                  ),
-            border: Border.all(
-              color: selected
-                  ? AppColors.white.withValues(alpha: 0.8)
-                  : AppColors.white.withValues(alpha: 0.24),
-            ),
-          ),
-          child: Text(
-            label.toUpperCase(),
-            style: AppStyles.bodyMedium(
-              color: AppColors.white,
-              fontWeight: FontWeight.w800,
-            ).copyWith(height: 1),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GameMenuModeInfo extends StatelessWidget {
-  const _GameMenuModeInfo({
-    required this.selectedMode,
-    required this.level,
-    required this.endlessBestTile,
-  });
-
-  final LinkNumberPlayMode selectedMode;
-  final int level;
-  final int endlessBestTile;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = selectedMode == LinkNumberPlayMode.endless
-        ? '${LocaleKey.gameMenuBestTile.tr}: $endlessBestTile'
-        : '${LocaleKey.gameMenuLevel.tr}: $level';
-
-    return Text(
-      text,
-      style: AppStyles.bodyMedium(
-        color: AppColors.white.withValues(alpha: 0.86),
-        fontWeight: FontWeight.w700,
-      ),
     );
   }
 }

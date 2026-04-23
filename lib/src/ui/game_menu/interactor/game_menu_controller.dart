@@ -17,7 +17,6 @@ class GameMenuController extends GetxController {
   final GameProgressManager _progressManager = Get.find<GameProgressManager>();
   final LinkNumberGifPreloader _gifPreloader = LinkNumberGifPreloader.instance;
   final RxBool _isSplashLoading = true.obs;
-  final Rx<LinkNumberPlayMode> _selectedMode = LinkNumberPlayMode.level.obs;
 
   final List<GameMenuItem> gameItems = const <GameMenuItem>[
     GameMenuItem(
@@ -32,7 +31,6 @@ class GameMenuController extends GetxController {
   int get stars => _progressManager.stars;
   int get endlessBestTile => _progressManager.endlessBestTile;
   bool get isSplashLoading => _isSplashLoading.value;
-  LinkNumberPlayMode get selectedMode => _selectedMode.value;
 
   @override
   void onInit() {
@@ -69,14 +67,12 @@ class GameMenuController extends GetxController {
     }
   }
 
-  void selectMode(LinkNumberPlayMode mode) {
-    _selectedMode.value = mode;
-  }
-
   void openSelectedMode() {
     Get.toNamed(
       AppPages.linkNumberV3,
-      arguments: <String, Object>{'playMode': selectedMode.routeValue},
+      arguments: <String, Object>{
+        'playMode': LinkNumberPlayMode.level.routeValue,
+      },
     );
   }
 }
