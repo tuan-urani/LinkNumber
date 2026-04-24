@@ -69,6 +69,14 @@ class LocaleKey {
   static const String linkNumberFeverTurnsLeft = 'link_number_fever_turns_left';
   static const String linkNumberFeverLetsGo = 'link_number_fever_lets_go';
   static const String linkNumberFeverCharge = 'link_number_fever_charge';
+  static const String linkNumberWinSpinTitle = 'link_number_win_spin_title';
+  static const String linkNumberWinSpinSubtitle =
+      'link_number_win_spin_subtitle';
+  static const String linkNumberWinSpinSpin = 'link_number_win_spin_spin';
+  static const String linkNumberWinSpinResult = 'link_number_win_spin_result';
+  static const String linkNumberWinSpinClaimX2 =
+      'link_number_win_spin_claim_x2';
+  static const String linkNumberWinWatchAdX2 = 'link_number_win_watch_ad_x2';
   static const String splashLoading = 'splash_loading';
   static const String splashPrivacyPolicy = 'splash_privacy_policy';
   static const String splashTermsOfUse = 'splash_terms_of_use';

@@ -18,6 +18,7 @@ class LinkNumberResultOverlay extends StatefulWidget {
     required this.onNextLevel,
     required this.onWatchRewardAd,
     required this.canWatchRewardAd,
+    required this.isWatchRewardAdLoading,
     required this.isEndlessMode,
     required this.currentLevel,
     required this.endlessBestTile,
@@ -30,6 +31,7 @@ class LinkNumberResultOverlay extends StatefulWidget {
   final VoidCallback onNextLevel;
   final VoidCallback onWatchRewardAd;
   final bool canWatchRewardAd;
+  final bool isWatchRewardAdLoading;
   final bool isEndlessMode;
   final int currentLevel;
   final int endlessBestTile;
@@ -221,21 +223,31 @@ class _LinkNumberResultOverlayState extends State<LinkNumberResultOverlay> {
                                     backgroundBottom: AppColors.color0095FF,
                                     icon: Icons.arrow_forward_rounded,
                                   ),
-                                  14.height,
-                                  _ResultActionButton(
-                                    label: LocaleKey.linkNumberRetryLevel.tr,
-                                    onPressed: widget.onRetry,
-                                    backgroundTop: AppColors.colorEC62C8,
-                                    backgroundBottom: AppColors.colorEF4056,
-                                    icon: Icons.replay_rounded,
-                                  ),
+                                  if (widget.canWatchRewardAd ||
+                                      widget
+                                          .isWatchRewardAdLoading) ...<Widget>[
+                                    14.height,
+                                    _WatchAdActionButton(
+                                      label:
+                                          LocaleKey.linkNumberWinWatchAdX2.tr,
+                                      onPressed: widget.isWatchRewardAdLoading
+                                          ? null
+                                          : widget.onWatchRewardAd,
+                                      isLoading: widget.isWatchRewardAdLoading,
+                                    ),
+                                  ],
                                 ],
                               )
                             else
                               Column(
                                 children: <Widget>[
                                   if (widget.canWatchRewardAd) ...<Widget>[
-                                    _LossWatchAdButton(
+                                    _WatchAdActionButton(
+                                      label: LocaleKey
+                                          .linkNumberLossWatchAdMoves
+                                          .trParams(<String, String>{
+                                            'count': '3',
+                                          }),
                                       onPressed: widget.onWatchRewardAd,
                                     ),
                                     10.height,
@@ -456,28 +468,43 @@ class _ResultActionButton extends StatelessWidget {
   }
 }
 
-class _LossWatchAdButton extends StatelessWidget {
-  const _LossWatchAdButton({required this.onPressed});
+class _WatchAdActionButton extends StatelessWidget {
+  const _WatchAdActionButton({
+    required this.label,
+    required this.onPressed,
+    this.isLoading = false,
+  });
 
-  final VoidCallback onPressed;
+  final String label;
+  final VoidCallback? onPressed;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
+    final isDisabled = onPressed == null;
+    final gradientColors = isDisabled
+        ? <Color>[
+            AppColors.colorFFCA2A.withValues(alpha: 0.4),
+            AppColors.colorF39702.withValues(alpha: 0.42),
+          ]
+        : <Color>[AppColors.colorFFCA2A, AppColors.colorF39702];
     return Material(
       color: AppColors.transparent,
       child: InkWell(
-        onTap: () {
-          unawaited(AppUiSfx.playButtonTap());
-          onPressed();
-        },
+        onTap: onPressed == null
+            ? null
+            : () {
+                unawaited(AppUiSfx.playButtonTap());
+                onPressed?.call();
+              },
         borderRadius: 18.borderRadiusAll,
         child: Ink(
           decoration: BoxDecoration(
             borderRadius: 18.borderRadiusAll,
-            gradient: const LinearGradient(
+            gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: <Color>[AppColors.colorFFCA2A, AppColors.colorF39702],
+              colors: gradientColors,
             ),
             border: Border.all(
               color: AppColors.colorFFE53E.withValues(alpha: 0.9),
@@ -495,34 +522,43 @@ class _LossWatchAdButton extends StatelessWidget {
             constraints: const BoxConstraints(minHeight: 72),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                children: <Widget>[
-                  Icon(
-                    Icons.play_circle_fill_rounded,
-                    color: AppColors.white,
-                    size: 34,
-                  ),
-                  12.width,
-                  Expanded(
-                    child: Text(
-                      LocaleKey.linkNumberLossWatchAdMoves.trParams(
-                        <String, String>{'count': '3'},
+              child: isLoading
+                  ? Center(
+                      child: SizedBox(
+                        width: 26,
+                        height: 26,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.8,
+                          color: AppColors.white,
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                      style: AppStyles.h4(
-                        color: AppColors.white,
-                        fontWeight: FontWeight.w900,
-                      ).copyWith(height: 1),
+                    )
+                  : Row(
+                      children: <Widget>[
+                        Icon(
+                          Icons.play_circle_fill_rounded,
+                          color: AppColors.white,
+                          size: 34,
+                        ),
+                        12.width,
+                        Expanded(
+                          child: Text(
+                            label,
+                            textAlign: TextAlign.center,
+                            style: AppStyles.h4(
+                              color: AppColors.white,
+                              fontWeight: FontWeight.w900,
+                            ).copyWith(height: 1),
+                          ),
+                        ),
+                        10.width,
+                        Icon(
+                          Icons.videocam_rounded,
+                          color: AppColors.white,
+                          size: 30,
+                        ),
+                      ],
                     ),
-                  ),
-                  10.width,
-                  Icon(
-                    Icons.videocam_rounded,
-                    color: AppColors.white,
-                    size: 30,
-                  ),
-                ],
-              ),
             ),
           ),
         ),

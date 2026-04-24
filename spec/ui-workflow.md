@@ -78,6 +78,13 @@ Features:
 - Keeps V2 gameplay logic and timing behavior unchanged.
 - Replaces ball visuals with Flutter-drawn tile cells in states `idle`, `selected`, `destroy`.
 - Applies the same tile style in board cells and header mini previews.
+- Level win flow includes a pre-claim spin reward gate before showing the standard win result modal.
+- Spin reward gate uses a casino-style wheel visual (gold rim lights, pointer, center hub, and stronger glow) to improve reward reveal feel.
+- Spin reward wheel now uses 6 sections (`10, 20, 40, 60, 80, 100`) with a stronger bottom `SPIN` CTA and no subtitle text.
+- On overlay entry, wheel auto-spins for 2 seconds and settles on `10`; `SPIN` CTA stays hidden during auto-spin and fades in after stop.
+- After player taps `SPIN` and wheel resolves a reward, spin overlay closes immediately and transitions straight to win result modal.
+- Win result modal now offers `Next` + `Watch Ad x2` (instead of `Retry`); successful ad view doubles pending level reward before `Next`.
+- Debug builds show a small top-right preview shortcut to open spin overlay without winning the level.
 - Supports mode-specific rule sets:
   - `Level`: goal/moves/win-next-level flow.
   - `Endless`: no goal, no moves countdown, no level-win; game over only when no playable pair remains.
@@ -89,6 +96,7 @@ Features:
 - `LinkNumberV3Tile`: tile renderer with gradient, border, highlight, and state transitions.
 - `LinkNumberBoard` (v3 module): uses `LinkNumberV3Tile` for normal, selected path, and destroy states.
 - `LinkNumberHeaderPanel` (v3 module): switches between goal header (level mode) and best/score summary (endless mode).
+- `LinkNumberWinRewardSpinOverlay` (v3 module): spin-based reward picker with `OK` and rewarded-ad `Claim x2`.
 - `LinkNumberResultOverlay` (v3 module): supports endless game-over summary with best tile.
 
 ### 3. User Flow & Logic
@@ -98,7 +106,14 @@ Features:
 - normal tile => `idle`
 - path-selected tile => `selected`
 - removing/destroying tile => `destroy`
-4. Mode-specific outcomes:
+4. Level win reward flow:
+- On `Level` win, show spin reward gate first.
+- User spins to get a base coin reward.
+- User can:
+  - press `OK`: keep base reward.
+  - press `Claim x2`: watch rewarded ad; if completed, reward doubles.
+- After reward choice, show standard win result modal (`Next` / `Retry`), then apply chosen reward on `Next`.
+5. Mode-specific outcomes:
 - `Level`: win when goal is complete; lose when moves run out.
 - `Endless`: lose when board has no playable pair after resolve (no guaranteed-pair injection during gameplay).
 

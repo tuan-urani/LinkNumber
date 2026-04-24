@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -88,6 +89,10 @@ class LinkNumberController extends GetxController {
   final RxBool _isInteractiveTutorialActive = false.obs;
   final RxBool _showReadyToPlayFx = false.obs;
   final RxBool _showFeverTriggerFx = false.obs;
+  final RxBool _showWinRewardSpinGate = false.obs;
+  final RxInt _pendingWinRewardCoins = LinkNumberEngine.levelWinRewardCoins.obs;
+  final RxBool _isWinRewardAdClaimInProgress = false.obs;
+  final RxBool _hasClaimedWinRewardX2 = false.obs;
   final RxInt _tutorialStageIndex = 0.obs;
   final RxInt _tutorialTapStep = 0.obs;
   bool _isResolvingMerge = false;
@@ -98,9 +103,13 @@ class LinkNumberController extends GetxController {
   bool get isInteractiveTutorialActive => _isInteractiveTutorialActive.value;
   bool get showReadyToPlayFx => _showReadyToPlayFx.value;
   bool get showFeverTriggerFx => _showFeverTriggerFx.value;
+  bool get showWinRewardSpinGate => _showWinRewardSpinGate.value;
+  bool get isWinRewardAdClaimInProgress => _isWinRewardAdClaimInProgress.value;
+  bool get hasClaimedWinRewardX2 => _hasClaimedWinRewardX2.value;
+  bool get isDebugSpinPreviewEnabled => false;
   bool get shouldReserveAdBannerSpace => _admobManager.isAvailable;
   int get levelWinRewardCoins =>
-      snapshot.value.isEndlessMode ? 0 : LinkNumberEngine.levelWinRewardCoins;
+      snapshot.value.isEndlessMode ? 0 : _pendingWinRewardCoins.value;
 
   _TutorialStage get _currentTutorialStage {
     final index = _tutorialStageIndex.value.clamp(
@@ -254,6 +263,7 @@ class LinkNumberController extends GetxController {
         _showReadyToPlayFx.value) {
       return;
     }
+    _resetWinRewardSpinFlow();
     _setSnapshot(_engine.restartLevel());
   }
 
@@ -263,6 +273,7 @@ class LinkNumberController extends GetxController {
         _showReadyToPlayFx.value) {
       return;
     }
+    _resetWinRewardSpinFlow();
     _setSnapshot(_engine.retryLevelAfterLose());
   }
 
@@ -300,7 +311,100 @@ class LinkNumberController extends GetxController {
         _showReadyToPlayFx.value) {
       return;
     }
-    _setSnapshot(_engine.nextLevel());
+    final resolvedRewardCoins = math.max(0, _pendingWinRewardCoins.value);
+    _resetWinRewardSpinFlow();
+    _setSnapshot(_engine.nextLevel(rewardCoins: resolvedRewardCoins));
+  }
+
+  void confirmWinSpinReward(int rewardCoins) {
+    if (_isResolvingMerge ||
+        _isInteractiveTutorialActive.value ||
+        _showReadyToPlayFx.value ||
+        !_showWinRewardSpinGate.value) {
+      return;
+    }
+    _pendingWinRewardCoins.value = math.max(0, rewardCoins);
+    _showWinRewardSpinGate.value = false;
+  }
+
+  Future<bool> claimWinSpinRewardX2(int rewardCoins) async {
+    if (_isResolvingMerge ||
+        _isInteractiveTutorialActive.value ||
+        _showReadyToPlayFx.value ||
+        !_showWinRewardSpinGate.value ||
+        _isWinRewardAdClaimInProgress.value ||
+        _isRewardAdFlowInProgress) {
+      return false;
+    }
+
+    _isWinRewardAdClaimInProgress.value = true;
+    _isRewardAdFlowInProgress = true;
+    try {
+      final hasReward = await _admobManager.showRewardedForExtraMoves();
+      if (!hasReward || isClosed) {
+        return false;
+      }
+      _pendingWinRewardCoins.value = math.max(0, rewardCoins * 2);
+      _hasClaimedWinRewardX2.value = true;
+      _showWinRewardSpinGate.value = false;
+      return true;
+    } finally {
+      _isRewardAdFlowInProgress = false;
+      _isWinRewardAdClaimInProgress.value = false;
+    }
+  }
+
+  void claimWinResultRewardX2() {
+    if (_isResolvingMerge ||
+        _isInteractiveTutorialActive.value ||
+        _showReadyToPlayFx.value ||
+        !_canClaimWinResultRewardX2) {
+      return;
+    }
+    unawaited(_claimWinResultRewardX2());
+  }
+
+  bool get _canClaimWinResultRewardX2 =>
+      snapshot.value.hasWon &&
+      snapshot.value.isLevelMode &&
+      !_showWinRewardSpinGate.value &&
+      !_hasClaimedWinRewardX2.value &&
+      !_isWinRewardAdClaimInProgress.value &&
+      !_isRewardAdFlowInProgress;
+
+  Future<void> _claimWinResultRewardX2() async {
+    _isWinRewardAdClaimInProgress.value = true;
+    _isRewardAdFlowInProgress = true;
+    try {
+      final hasReward = await _admobManager.showRewardedForExtraMoves();
+      if (!hasReward || isClosed) {
+        return;
+      }
+      if (_hasClaimedWinRewardX2.value) {
+        return;
+      }
+      _pendingWinRewardCoins.value = math.max(
+        0,
+        _pendingWinRewardCoins.value * 2,
+      );
+      _hasClaimedWinRewardX2.value = true;
+    } finally {
+      _isRewardAdFlowInProgress = false;
+      _isWinRewardAdClaimInProgress.value = false;
+    }
+  }
+
+  void debugOpenWinSpinPreview() {
+    if (!kDebugMode ||
+        _isResolvingMerge ||
+        _isInteractiveTutorialActive.value ||
+        _showReadyToPlayFx.value) {
+      return;
+    }
+    _hideFeverTriggerFx();
+    _pendingWinRewardCoins.value = LinkNumberEngine.levelWinRewardCoins;
+    _hasClaimedWinRewardX2.value = false;
+    _showWinRewardSpinGate.value = true;
   }
 
   void onReadyToPlayPressed() {
@@ -595,6 +699,19 @@ class LinkNumberController extends GetxController {
   void _setSnapshot(LinkNumberSnapshot nextSnapshot) {
     final previousSnapshot = snapshot.value;
     snapshot.value = nextSnapshot;
+    final didTriggerLevelWin =
+        !_isInteractiveTutorialActive.value &&
+        !previousSnapshot.hasWon &&
+        nextSnapshot.hasWon &&
+        nextSnapshot.isLevelMode;
+    if (didTriggerLevelWin) {
+      _pendingWinRewardCoins.value = LinkNumberEngine.levelWinRewardCoins;
+      _hasClaimedWinRewardX2.value = false;
+      _showWinRewardSpinGate.value = true;
+    }
+    if (previousSnapshot.hasWon && !nextSnapshot.hasWon) {
+      _resetWinRewardSpinFlow();
+    }
     final didTriggerFever =
         !_isInteractiveTutorialActive.value &&
         !previousSnapshot.isFeverActive &&
@@ -624,9 +741,17 @@ class LinkNumberController extends GetxController {
     _showFeverTriggerFx.value = false;
   }
 
+  void _resetWinRewardSpinFlow() {
+    _showWinRewardSpinGate.value = false;
+    _pendingWinRewardCoins.value = LinkNumberEngine.levelWinRewardCoins;
+    _hasClaimedWinRewardX2.value = false;
+    _isWinRewardAdClaimInProgress.value = false;
+  }
+
   @override
   void onClose() {
     _hideFeverTriggerFx();
+    _resetWinRewardSpinFlow();
     super.onClose();
   }
 

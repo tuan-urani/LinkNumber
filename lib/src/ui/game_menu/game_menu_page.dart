@@ -36,6 +36,7 @@ class GameMenuPage extends GetView<GameMenuController> {
             onNextLevel: () => Get.back<void>(),
             onWatchRewardAd: () => Get.back<void>(),
             canWatchRewardAd: !hasWon,
+            isWatchRewardAdLoading: false,
             isEndlessMode: false,
             currentLevel: currentLevel,
             endlessBestTile: 0,

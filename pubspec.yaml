@@ -93,6 +93,7 @@ flutter:
     - assets/main_menu.png
     - assets/main_slogan.png
     - assets/music/
+    - assets/game/wheel.png
     - assets/game/balls/
     - assets/game/balls/gif/
     - assets/game/backgrounds/

@@ -307,7 +307,7 @@ class _RoundSkillButton extends StatelessWidget {
                     builder: (context) {
                       final badgeLabel = '$badgeValue';
                       final minWidth = badgeLabel.length >= 3
-                          ? (compact ? 28.0 : 30.0)
+                          ? (compact ? 32.0 : 34.0)
                           : null;
                       return _BadgeCircle(
                         compact: compact,
@@ -316,8 +316,11 @@ class _RoundSkillButton extends StatelessWidget {
                           badgeLabel,
                           style: AppStyles.caption(
                             color: AppColors.white,
-                            fontWeight: FontWeight.w800,
-                          ).copyWith(height: 1),
+                            fontWeight: FontWeight.w900,
+                          ).copyWith(
+                            height: 1,
+                            fontSize: compact ? 14 : 15,
+                          ),
                         ),
                       );
                     },
@@ -344,7 +347,7 @@ class _BadgeCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = compact ? 20.0 : 22.0;
+    final size = compact ? 24.0 : 26.0;
     final width = math.max(size, minWidth ?? size);
     return Container(
       width: width,

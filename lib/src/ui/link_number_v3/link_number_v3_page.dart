@@ -9,6 +9,7 @@ import 'package:flow_connection/src/locale/locale_key.dart';
 import 'package:flow_connection/src/ui/link_number_v3/components/link_number_game_banner_ad.dart';
 import 'package:flow_connection/src/ui/link_number_v3/components/link_number_result_overlay.dart';
 import 'package:flow_connection/src/ui/link_number_v3/components/link_number_shop_modal.dart';
+import 'package:flow_connection/src/ui/link_number_v3/components/link_number_win_reward_spin_overlay.dart';
 import 'package:flow_connection/src/utils/app_assets.dart';
 import 'package:flow_connection/src/ui/link_number_v3/components/link_number_board.dart';
 import 'package:flow_connection/src/ui/link_number_v3/components/link_number_header_panel.dart';
@@ -87,6 +88,20 @@ class LinkNumberV3Page extends GetView<LinkNumberController> {
                 final isTutorialActive = controller.isInteractiveTutorialActive;
                 final showReadyToPlayFx = controller.showReadyToPlayFx;
                 final showFeverTriggerFx = controller.showFeverTriggerFx;
+                final showWinRewardSpinGate = controller.showWinRewardSpinGate;
+                final showResultOverlay =
+                    snapshot.isGameOver && !showWinRewardSpinGate;
+                final isWatchRewardAdLoading = snapshot.hasWon
+                    ? controller.isWinRewardAdClaimInProgress
+                    : false;
+                final canWatchRewardAdInResult = snapshot.hasWon
+                    ? snapshot.isLevelMode &&
+                          !controller.hasClaimedWinRewardX2 &&
+                          !controller.isWinRewardAdClaimInProgress
+                    : snapshot.isLevelMode;
+                final VoidCallback onResultWatchRewardAd = snapshot.hasWon
+                    ? controller.claimWinResultRewardX2
+                    : controller.continueWithRewardAdMoves;
                 return LayoutBuilder(
                   builder: (_, constraints) {
                     final isWide = constraints.maxWidth >= 980;
@@ -151,7 +166,27 @@ class LinkNumberV3Page extends GetView<LinkNumberController> {
                       fit: StackFit.expand,
                       children: <Widget>[
                         content,
-                        if (snapshot.isGameOver)
+                        if (controller.isDebugSpinPreviewEnabled &&
+                            !showWinRewardSpinGate &&
+                            !showReadyToPlayFx &&
+                            !isTutorialActive)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: _DebugSpinPreviewButton(
+                              onPressed: controller.debugOpenWinSpinPreview,
+                            ),
+                          ),
+                        if (showWinRewardSpinGate)
+                          Positioned.fill(
+                            child: LinkNumberWinRewardSpinOverlay(
+                              isClaimingRewardAd:
+                                  controller.isWinRewardAdClaimInProgress,
+                              onConfirmReward: controller.confirmWinSpinReward,
+                              onClaimRewardX2: controller.claimWinSpinRewardX2,
+                            ),
+                          ),
+                        if (showResultOverlay)
                           Positioned.fill(
                             child: LinkNumberResultOverlay(
                               hasWon: snapshot.hasWon,
@@ -163,9 +198,9 @@ class LinkNumberV3Page extends GetView<LinkNumberController> {
                                   ? controller.retryLevel
                                   : controller.restartLevel,
                               onNextLevel: controller.nextLevel,
-                              onWatchRewardAd:
-                                  controller.continueWithRewardAdMoves,
-                              canWatchRewardAd: snapshot.isLevelMode,
+                              onWatchRewardAd: onResultWatchRewardAd,
+                              canWatchRewardAd: canWatchRewardAdInResult,
+                              isWatchRewardAdLoading: isWatchRewardAdLoading,
                             ),
                           ),
                         if (showFeverTriggerFx)
@@ -197,6 +232,64 @@ class LinkNumberV3Page extends GetView<LinkNumberController> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _DebugSpinPreviewButton extends StatelessWidget {
+  const _DebugSpinPreviewButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.transparent,
+      child: InkWell(
+        onTap: () {
+          unawaited(AppUiSfx.playButtonTap());
+          onPressed();
+        },
+        borderRadius: 999.borderRadiusAll,
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: 999.borderRadiusAll,
+            color: AppColors.black.withValues(alpha: 0.52),
+            border: Border.all(
+              color: AppColors.colorFFE53E.withValues(alpha: 0.78),
+              width: 1.2,
+            ),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: AppColors.colorFFE53E.withValues(alpha: 0.2),
+                blurRadius: 12,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(
+                  Icons.remove_red_eye_rounded,
+                  size: 16,
+                  color: AppColors.colorFFE53E,
+                ),
+                4.width,
+                Text(
+                  LocaleKey.linkNumberWinSpinSpin.tr,
+                  style: AppStyles.bodyMedium(
+                    color: AppColors.colorFFE53E,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

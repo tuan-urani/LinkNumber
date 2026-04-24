@@ -271,14 +271,15 @@ class LinkNumberEngine {
     return _snapshot;
   }
 
-  LinkNumberSnapshot nextLevel() {
+  LinkNumberSnapshot nextLevel({int? rewardCoins}) {
     if (!_snapshot.hasWon || _isEndlessMode) {
       return _snapshot;
     }
 
     _recordLevelOutcome(won: true, mode: _snapshot.goalMode);
     _stars += 1;
-    _coins += levelWinRewardCoins;
+    final resolvedRewardCoins = math.max(0, rewardCoins ?? levelWinRewardCoins);
+    _coins += resolvedRewardCoins;
     _currentLevel += 1;
 
     _snapshot = _buildSnapshotForLevel(

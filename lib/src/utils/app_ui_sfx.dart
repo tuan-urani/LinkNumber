@@ -15,6 +15,9 @@ class AppUiSfx {
   static final AudioPlayer _resultPlayer = AudioPlayer(
     playerId: 'app_ui_result_sfx',
   );
+  static final AudioPlayer _spinPlayer = AudioPlayer(
+    playerId: 'app_ui_spin_sfx',
+  );
 
   static Future<void> playButtonTap() async {
     final pool = await _resolveButtonTapPool();
@@ -46,12 +49,30 @@ class AppUiSfx {
     await _playResultSound(AppAssets.linkNumberFeverSfxMp3);
   }
 
+  static Future<void> playSpinStart() async {
+    await _playSpinSound(AppAssets.linkNumberSpinStartSfxMp3);
+  }
+
+  static Future<void> playSpinEnd() async {
+    await _playSpinSound(AppAssets.linkNumberSpinEndSfxMp3);
+  }
+
   static Future<void> _playResultSound(String assetPath) async {
     try {
       await _resultPlayer.stop();
       await _resultPlayer.play(
         AssetSource(_toAudioAssetSourcePath(assetPath)),
         mode: PlayerMode.lowLatency,
+      );
+    } catch (_) {}
+  }
+
+  static Future<void> _playSpinSound(String assetPath) async {
+    try {
+      await _spinPlayer.stop();
+      await _spinPlayer.play(
+        AssetSource(_toAudioAssetSourcePath(assetPath)),
+        mode: PlayerMode.mediaPlayer,
       );
     } catch (_) {}
   }
