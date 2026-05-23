@@ -48,20 +48,6 @@ class _CoinBadge extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            8.width,
-            Container(
-              width: 18,
-              height: 18,
-              decoration: const BoxDecoration(
-                color: AppColors.primary,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.add_rounded,
-                color: AppColors.white,
-                size: 12,
-              ),
-            ),
           ],
         ),
       ),

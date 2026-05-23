@@ -12,6 +12,8 @@ import 'package:flow_connection/src/ui/link_number_v2/binding/link_number_v2_bin
 import 'package:flow_connection/src/ui/link_number_v2/link_number_v2_page.dart';
 import 'package:flow_connection/src/ui/link_number_v3/binding/link_number_v3_binding.dart';
 import 'package:flow_connection/src/ui/link_number_v3/link_number_v3_page.dart';
+import 'package:flow_connection/src/ui/legal_webview/binding/legal_webview_binding.dart';
+import 'package:flow_connection/src/ui/legal_webview/legal_webview_page.dart';
 import 'package:flow_connection/src/ui/main/main_page.dart';
 
 class AppPages {
@@ -25,6 +27,7 @@ class AppPages {
   static const String linkNumberV2 = '/link-number-v2';
   static const String linkNumberV3 = '/link-number-v3';
   static const String linkNumberAssetPreview = '/link-number-asset-preview';
+  static const String legalWebView = '/legal-webview';
 
   static final List<GetPage<dynamic>> pages = <GetPage<dynamic>>[
     GetPage(
@@ -58,6 +61,11 @@ class AppPages {
       name: linkNumberAssetPreview,
       page: () => const LinkNumberAssetPreviewPage(),
       binding: LinkNumberAssetPreviewBinding(),
+    ),
+    GetPage(
+      name: legalWebView,
+      page: () => const LegalWebViewPage(),
+      binding: LegalWebViewBinding(),
     ),
   ];
 }

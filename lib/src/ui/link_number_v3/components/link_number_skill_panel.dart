@@ -73,11 +73,7 @@ class LinkNumberSkillPanel extends StatelessWidget {
           badgeValue: snapshot.breakTileCost,
         ),
         SizedBox(width: compact ? 10 : 12),
-        _BottomCoinCard(
-          compact: compact,
-          coins: snapshot.coins,
-          onOpenShop: onOpenShop,
-        ),
+        _BottomCoinCard(compact: compact, coins: snapshot.coins),
         SizedBox(width: compact ? 10 : 12),
         Expanded(
           child: _LevelProgressBar(
@@ -94,15 +90,10 @@ class LinkNumberSkillPanel extends StatelessWidget {
 }
 
 class _BottomCoinCard extends StatelessWidget {
-  const _BottomCoinCard({
-    required this.compact,
-    required this.coins,
-    required this.onOpenShop,
-  });
+  const _BottomCoinCard({required this.compact, required this.coins});
 
   final bool compact;
   final int coins;
-  final VoidCallback onOpenShop;
 
   String _formatCoins(int value) {
     final absValue = value.abs();
@@ -133,7 +124,6 @@ class _BottomCoinCard extends StatelessWidget {
     final width = compact ? 112.0 : 124.0;
     final coinSize = compact ? 20.0 : 22.0;
     final displayCoins = _formatCoins(coins);
-    final plusButtonSize = compact ? 24.0 : 26.0;
 
     return Container(
       width: width,
@@ -184,37 +174,11 @@ class _BottomCoinCard extends StatelessWidget {
               ),
             ),
           ),
-          (compact ? 4 : 6).width,
-          GestureDetector(
-            onTap: () {
-              unawaited(AppUiSfx.playButtonTap());
-              onOpenShop();
-            },
-            child: Container(
-              width: plusButtonSize,
-              height: plusButtonSize,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.color63CF20,
-                border: Border.all(
-                  color: AppColors.white.withValues(alpha: 0.75),
-                  width: 1.1,
-                ),
-                boxShadow: <BoxShadow>[
-                  BoxShadow(
-                    color: AppColors.black.withValues(alpha: 0.28),
-                    blurRadius: 0,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Icon(
-                Icons.add_rounded,
-                color: AppColors.white,
-                size: compact ? 16 : 18,
-              ),
-            ),
-          ),
+          // Plus shop entry is temporarily hidden.
+          // onTap: () {
+          //   unawaited(AppUiSfx.playButtonTap());
+          //   onOpenShop();
+          // },
         ],
       ),
     );
@@ -317,10 +281,7 @@ class _RoundSkillButton extends StatelessWidget {
                           style: AppStyles.caption(
                             color: AppColors.white,
                             fontWeight: FontWeight.w900,
-                          ).copyWith(
-                            height: 1,
-                            fontSize: compact ? 14 : 15,
-                          ),
+                          ).copyWith(height: 1, fontSize: compact ? 14 : 15),
                         ),
                       );
                     },
